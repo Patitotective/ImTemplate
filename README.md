@@ -59,6 +59,10 @@ Explanation:
 
 - `minSize`: Window's minimum size.
 
+### About Modal
+Using the information from the config file, ImTemplate creates a simple about modal.
+![About modal](https://github.com/Patitotective/ImTemplate/blob/main/screenshots/aboutmodal.png)
+
 ### `settings`
 ![Preferences modal](https://github.com/Patitotective/ImTemplate/blob/main/screenshots/prefsmodal.png)
 
