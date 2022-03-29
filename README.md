@@ -45,6 +45,10 @@ settings=>
 ```
 https://github.com/Patitotective/ImTemplate/blob/main/src/config.niprefs
 
+### About Modal
+Using the information from the config file, ImTemplate creates a simple about modal.
+![About modal](https://github.com/Patitotective/ImTemplate/blob/main/screenshots/aboutmodal.png)
+
 Explanation:
 - `name`: Used for the title and about modal.
 - `version`: Used for the about modal.
@@ -58,12 +62,10 @@ Explanation:
 - `fontSize`: The (float) size of the font.
 
 - `minSize`: Window's minimum size.
-
-### About Modal
-Using the information from the config file, ImTemplate creates a simple about modal.
-![About modal](https://github.com/Patitotective/ImTemplate/blob/main/screenshots/aboutmodal.png)
+- `settings`: ...
 
 ### `settings`
+Define the preferences the user can modify from the preferences window (which will be saved at `prefsPath`).
 ![Preferences modal](https://github.com/Patitotective/ImTemplate/blob/main/screenshots/prefsmodal.png)
 
 All the `settings` children keys will get stored at `prefsPath` except the ones of type `Section`.  
