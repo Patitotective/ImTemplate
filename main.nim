@@ -157,9 +157,16 @@ proc initPrefs(app: var App) =
     }
   }).initPrefs(app.config["prefsPath"].getString())
 
+proc initApp*(config: PObjectType): App = 
+  result = App(config: config, somefloat: 0.5f, counter: 2)
+  result.initPrefs()
+
+  for name, data in result.config["settings"].getObject(): # Init the preferences with the default values defined in config["settings"]
+    if parseEnum[SettingTypes](data["type"]) != Section:
+      result.prefs["name"] = data["default"]  
+
 proc main() =
-  var app = App(config: configPath.readPrefs())
-  app.initPrefs()
+  var app = initApp(configPath.readPrefs())
 
   doAssert glfwInit()
 
