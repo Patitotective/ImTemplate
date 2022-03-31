@@ -7,7 +7,7 @@ authors=["Patitotective", "Cristobal", "Inu147"]
 prefsPath="prefs.niprefs"
 stylePath="src/style.niprefs"
 iconPath="assets/icon.png"
-fontPath="assets/ProggyClean.ttf" # Other options are Roboto-Regular.ttf, DroidSans.ttf, Cousine-Regular.ttf, NotoSans-Regular.ttf or Karla-Regular.ttf
+fontPath="assets/ProggyVector Regular.ttf" # Other options are Roboto-Regular.ttf, DroidSans.ttf, Cousine-Regular.ttf, NotoSans-Regular.ttf, ProggyClean.ttf or Karla-Regular.ttf
 fontSize=16f
 
 # Window

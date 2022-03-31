@@ -130,8 +130,8 @@ proc initWindow(app: var App) =
   glfwWindowHint(GLFWResizable, GLFW_TRUE)
   
   app.win = glfwCreateWindow(
-    500, 
-    500, 
+    app.prefs["win/width"].getInt().int32, 
+    app.prefs["win/height"].getInt().int32, 
     app.config["name"].getString(), 
     icon = false # Do not use default icon
   )
@@ -143,9 +143,10 @@ proc initWindow(app: var App) =
   var icon = initGLFWImage(app.config["iconPath"].getString().readImage())
   app.win.setWindowIcon(1, icon.addr)
 
-  app.win.makeContextCurrent()
-
   app.win.setWindowSizeLimits(app.config["minSize"][0].getInt().int32, app.config["minSize"][1].getInt().int32, GLFW_DONT_CARE, GLFW_DONT_CARE) # minWidth, minHeight, maxWidth, maxHeight
+  app.win.setWindowPos(app.prefs["win/x"].getInt().int32, app.prefs["win/y"].getInt().int32)
+
+  app.win.makeContextCurrent()
 
 proc initPrefs(app: var App) = 
   app.prefs = toPrefs({
@@ -157,13 +158,32 @@ proc initPrefs(app: var App) =
     }
   }).initPrefs(app.config["prefsPath"].getString())
 
+proc initconfig*(app: var App, settings: PrefsNode) = 
+  # Add the preferences with the values defined in config["settings"]
+  for name, data in settings: 
+    let settingType = parseEnum[SettingTypes](data["type"])
+    if settingType != Section:
+      app.prefs[name] = data["default"]  
+    else:
+      app.initConfig(data["content"])
+
 proc initApp*(config: PObjectType): App = 
   result = App(config: config, somefloat: 0.5f, counter: 2)
   result.initPrefs()
+  result.initConfig(result.config["settings"])
 
-  for name, data in result.config["settings"].getObject(): # Init the preferences with the default values defined in config["settings"]
-    if parseEnum[SettingTypes](data["type"]) != Section:
-      result.prefs["name"] = data["default"]  
+proc terminate(app: var App) = 
+  var x, y, width, height: int32
+
+  app.win.getWindowPos(x.addr, y.addr)
+  app.win.getWindowSize(width.addr, height.addr)
+  
+  app.prefs["win/x"] = x
+  app.prefs["win/y"] = y
+  app.prefs["win/width"] = width
+  app.prefs["win/height"] = height
+
+  app.win.destroyWindow()
 
 proc main() =
   var app = initApp(configPath.readPrefs())
@@ -197,7 +217,8 @@ proc main() =
   igGlfwShutdown()
   context.igDestroyContext()
 
-  app.win.destroyWindow()
+  app.terminate()
+
   glfwTerminate()
 
 when isMainModule:
