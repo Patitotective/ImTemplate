@@ -15,7 +15,7 @@ proc getPath(path: string): string =
   when defined(appImage):
     result = getEnv"APPDIR" / "data" / path.extractFilename()
   else:
-    result = path
+    result = getAppDir() / path
 
 proc getPath(path: PrefsNode): string = 
   path.getString().getPath()
@@ -164,7 +164,7 @@ proc initPrefs(app: var App) =
     # Put prefsPath right next to the AppImage
     let prefsPath = getEnv"APPIMAGE".parentDir / app.config["prefsPath"].getString()
   else:
-    let prefsPath = app.config["prefsPath"].getString()
+    let prefsPath = getAppDir() / app.config["prefsPath"].getString()
   
   app.prefs = toPrefs({
     win: {
