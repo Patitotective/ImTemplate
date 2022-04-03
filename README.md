@@ -1,33 +1,46 @@
 # ImTemplate
-Template for making a single-windowed ImGui application in Nim.
+Template for making a single-windowed (or not) ImGui application in Nim.
 
 ![Main window](https://github.com/Patitotective/ImTemplate/blob/main/screenshots/main.png)
 
 ## Structure
-- `main.nim`: Application logic.
+- `README.md`: Project's description (in markdown).
+- `main.nim`: Application's logic.
+- `config.nims`: Nim compile configuration.
+- `ImExample.nimble`: [Nimble file](https://github.com/nim-lang/nimble#creating-packages).
+- `LICENSE`: Project's license.
+- `nakefile.md`: Used to build an AppImage (see [Building](#building)).
+- `config.niprefs`: Application's configuration (see [Config](#config)).
 - `assets`: 
-	- The application icon in `.png` and `.svg`
-	- Various fonts so you can choose the one you like the most.
+	- `icon.png`, `icon.svg`: Application's icon.
+	- `style.niprefs`: Application's style (using https://github.com/Patitotective/ImStyle).
+	- `Cousine-Regular.ttf`, `DroidSans.ttf`, `Karla-Regular.ttf`, `ProggyClean.ttf`, `Roboto-Regular.ttf`, `ProggyVector Regular.ttf`: Various fonts so you can choose the one you like the most.
 - `src`:
-	- `config.niprefs`: Application configuration (see the next section).
-	- `style.niprefs`: Application style (using https://github.com/Patitotective/ImStyle).
-	- `common.nim`: Simple procedures or types used by other modules.
+	- `utils.nim`: Anything used by more than one module.
 	- `prefsmodal.nim`: Create the preferences modal (called in `main.nim`)
 
+(`.gitignore` and `screenshots/` are not relevant)
+
 ## Config
-Config about the application so it doesn't need to be compiled again. It is stored using [niprefs](https://patitotective.github.io/niprefs/).  
-It looks like:
+Config about the application so it doesn't need to be compiled again. It is stored using [niprefs](https://patitotective.github.io/niprefs/):
 ```nim
 # App
 name="ImExample"
+comment="ImExample is a simple ImGui application example"
 version="0.1.0"
 website="https://github.com/Patitotective/ImTemplate"
-authors=["Patitotective", "Cristobal", "Andoni"]
+authors=["Patitotective", "Cristobal", "Inu147"]
 
-prefsPath="prefs.niprefs"
-stylePath="src/style.niprefs"
+# AppImage
+outDir="build"
+resourcesDir="data"
+categories=["Utility"]
+
+prefsPath="ImExample.niprefs"
+stylePath="assets/style.niprefs"
 iconPath="assets/icon.png"
-fontPath="assets/ProggyClean.ttf" # Other options are Roboto-Regular.ttf, DroidSans.ttf, Cousine-Regular.ttf, NotoSans-Regular.ttf or Karla-Regular.ttf
+svgIconPath="assets/icon.svg"
+fontPath="assets/ProggyVector Regular.ttf" # Other options are Roboto-Regular.ttf, DroidSans.ttf, Cousine-Regular.ttf, NotoSans-Regular.ttf, ProggyClean.ttf or Karla-Regular.ttf
 fontSize=16f
 
 # Window
@@ -49,12 +62,19 @@ https://github.com/Patitotective/ImTemplate/blob/main/src/config.niprefs
 Using the information from the config file, ImTemplate creates a simple about modal.
 ![About modal](https://github.com/Patitotective/ImTemplate/blob/main/screenshots/aboutmodal.png)
 
-Explanation:
-- `name`: Used for the title and about modal.
-- `version`: Used for the about modal.
+### Keys Explanation
+- `name`: Application's name.
+- `comment`: Application's description.
+- `version`: Application's version.
 - `website`: A link where you can find more information about the app.
 - `authors`: A sequence of strings to display in the about modal.
 
+(See [AppImage](#appimage-linux))
+- `outDir`: AppImage's output directory.
+- `resourcesDir`: Directory inside `AppDir` to store the resources in.
+- `categories`: Sequence of [registered categories](https://specifications.freedesktop.org/menu-spec/latest/apa.html).
+
+(Paths)
 - `prefsPath`: The path to save the (user) prefs file.
 - `stylePath`: The path of the application style (using https://github.com/Patitotective/ImStyle).
 - `iconPath`: The path of the application icon.
@@ -62,20 +82,20 @@ Explanation:
 - `fontSize`: The (float) size of the font.
 
 - `minSize`: Window's minimum size.
-- `settings`: ...
+- `settings`: See [`settings`](#settings).
 
 ### `settings`
-Define the preferences the user can modify from the preferences window (which will be saved at `prefsPath`).
+Define the preferences the user can modify from the preferences window (preferences that will be saved at `config["prefsPath"]`).
 ![Preferences modal](https://github.com/Patitotective/ImTemplate/blob/main/screenshots/prefsmodal.png)
 
-All the `settings` children keys will get stored at `prefsPath` except the ones of type `Section`.  
-Example:
-- `input`: This will be saved at `prefsPath` as a key.
-- `type`: See [SettingTypes](https://github.com/Patitotective/ImTemplate/blob/main/src/common.nim#L22).
+All the `settings` children keys will get stored at `config["prefsPath"]` with [niprefs](https://patitotective.github.io/niprefs/) (`input` in this example).
+Depending on each `type`, required keys may change, so go check [config.niprefs](https://github.com/Patitotective/ImTemplate/blob/main/src/config.niprefs#L24) to see which keys which types require.  
+In the case of `input`, these are the required keys.
+- `type`: See [SettingTypes](https://github.com/Patitotective/ImTemplate/blob/main/src/utils.nim#L22).
 - `default`: Default value.
 - `max`: Max buffer length (Not available for all types).
-- `flags`: Integer, string or sequence with the widget flags.
-- `help`: If passed, display a help marker with this message.
+- `flags`: Integer, string or sequence with the widget flags (https://nimgl.dev/docs/imgui.html#ImGuiInputTextFlags).
+- `help`: Display a help marker with this message. (Optional)
 
 #### Setting types
 - `Input`: Input text.
@@ -95,6 +115,7 @@ Example:
 Section types are useful to group similar settings.  
 It fits the settings at `content` inside a [collapsing header](https://nimgl.dev/docs/imgui.html#igCollapsingHeader%2Ccstring%2CImGuiTreeNodeFlags).
 ```nim
+...
 settings=>
   colors=>
     type="section"
@@ -110,12 +131,55 @@ settings=>
         flags="None" # See https://nimgl.dev/docs/imgui.html#ImGuiColorEditFlags
 ```
 
-Take a look at [src/config.niprefs](https://github.com/Patitotective/ImTemplate/blob/main/src/config.niprefs#L17).
+Take a look at [`config.niprefs`](https://github.com/Patitotective/ImTemplate/blob/main/src/config.niprefs#L24).
 
 ## Building
-Because of ImGui and Nim, build your application is really easy.  
-Just do `nimble build` and it will check all your app dependencies defined at `ImExample.nimble` and generate a binary (`ImExample`).  
-To distribute it, you can [add it to nimble packages list](https://github.com/nim-lang/packages), host it on git cloud repository so people can install it with nimble or you could try and use some other tool (like [Snap](https://snapcraft.io/), [Flatpak](https://flatpak.org/) or [AppImage](https://appimage.org/)).
+### Nimble
+You can publish your application as a [binary package](https://github.com/nim-lang/nimble#binary-packages) with nimble.  
+Or you can just upload it to GitHub (or similar).  
+(e.g.: To install ImExample you can `nimble install https://github.com/Patitotective/ImTemplate`)
+
+#### Resources
+To include the application resources in the binary package, you need to specify them in the `.nimble` file:
+```nim
+# Package
+
+...
+installFiles = @["config.niprefs", "assets/icon.png", "assets/style.niprefs", "assets/ProggyVector Regular.ttf"]
+
+...
+```
+
+### AppImage (Linux)
+You can also build your app as an AppImage, you only need to follow these steps:
+1. Install [appimagetool](https://appimage.github.io/appimagetool/) (For Debian/Ubuntu/Arch)
+```sh
+sudo wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/local/bin/appimagetool
+sudo chmod +x /usr/local/bin/appimagetool
+```
+2. (Install `nimble install nake` and) run `nake build` (or to build and run it use `nake run`)
+
+After that a new `ImExample-x86_64.AppImage` (architecture may change) file should be created inside `config["outDir"]`.
+
+#### Resources
+If you build your application as an AppImage you may want to have some resources like the icon or the font.  
+These are defined in the `nakefile.nim` module, the default resources are:
+```nim
+resources = [
+  configPath, 
+  config["iconPath"].getString(), 
+  config["stylePath"].getString(), 
+  config["fontPath"].getString()
+]
+```
+These resources are going to be copied from their path to `config["resourcesDir"]` (by default `data`).  
+Then in `main.nim` every time you need to access to some file you call `path.getPath()`.  
+It's (only `when defined(appImage)`) going to look for that path inside the `data` directory inside `APPDIR` environment variable.
+
+(You could also try [Snap](https://snapcraft.io/) or [Flatpak](https://flatpak.org/) and if you get it working please let me know).
+
+## Examples
+- [ImPasswordGen](https://github.com/Patitotective/ImPasswordGen)
 
 ## About
 - GitHub: https://github.com/Patitotective/ImTemplate.
@@ -123,5 +187,5 @@ To distribute it, you can [add it to nimble packages list](https://github.com/ni
 
 Contact me:
 - Discord: **Patitotective#0127**.
-- Tiwtter: [@patitotective](https://twitter.com/patitotective).
+- Twitter: [@patitotective](https://twitter.com/patitotective).
 - Email: **cristobalriaga@gmail.com**.

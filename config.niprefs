@@ -1,12 +1,19 @@
 # App
 name="ImExample"
+comment="ImExample is a simple ImGui application example"
 version="0.1.0"
 website="https://github.com/Patitotective/ImTemplate"
 authors=["Patitotective", "Cristobal", "Inu147"]
 
-prefsPath="prefs.niprefs"
-stylePath="src/style.niprefs"
+# AppImage
+outDir="build"
+resourcesDir="data"
+categories=["Utility"]
+
+prefsPath="ImExample.niprefs"
+stylePath="assets/style.niprefs"
 iconPath="assets/icon.png"
+svgIconPath="assets/icon.svg"
 fontPath="assets/ProggyVector Regular.ttf" # Other options are Roboto-Regular.ttf, DroidSans.ttf, Cousine-Regular.ttf, NotoSans-Regular.ttf, ProggyClean.ttf or Karla-Regular.ttf
 fontSize=16f
 

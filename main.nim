@@ -1,16 +1,24 @@
-import std/[strutils, browsers]
+import std/[strutils, sequtils, browsers, os]
 
-import chroma
 import imstyle
 import niprefs
 import nimgl/[opengl, glfw]
 import nimgl/imgui, nimgl/imgui/[impl_opengl, impl_glfw]
 
-import src/[common, prefsmodal]
+import src/[utils, prefsmodal]
 
 const
-  configPath = "src/config.niprefs"
-  bgColor = "#21232B".parseHtmlColor() # Background color of the GLFW window, same color as the ImGui window background so it looks more natural
+  configPath = "config.niprefs"
+
+proc getPath(path: string): string = 
+  # When running on an AppImage get the path from the AppImage resources
+  when defined(appImage):
+    result = getEnv"APPDIR" / "data" / path.extractFilename()
+  else:
+    result = path
+
+proc getPath(path: PrefsNode): string = 
+  path.getString().getPath()
 
 proc drawAboutModal(app: var App) = 
   var center: ImVec2
@@ -18,29 +26,31 @@ proc drawAboutModal(app: var App) =
   igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))
 
   if igBeginPopupModal("About " & app.config["name"].getString(), flags = makeFlags(AlwaysAutoResize)):
+
     # Display icon image
     var
       texture: GLuint
-      image = app.config["iconPath"].getString().readImage()
+      image = app.config["iconPath"].getPath().readImage()
     image.loadTextureFromData(texture)
     
-    igImage(cast[ptr ImTextureID](texture), igVec2(float32 image.width, float32 image.height))
+    igImage(cast[ptr ImTextureID](texture), igVec2(image.width.float32, image.height.float32))
     
     igSameLine()
     
-    igBeginGroup()
-    igText(app.config["name"].getString())
-    igText(app.config["version"].getString())
-    igEndGroup()
+    igPushTextWrapPos(250)
+    igTextWrapped(app.config["comment"].getString())
+    igPopTextWrapPos()
 
-    var credits: seq[string]
-    for i in app.config["authors"].getSeq():
-      credits.add i.getString() # Add them as actual strings and not PString so they don't have quotes
-    
-    igTextWrapped("Credits: " & credits.join(", "))
+    igSpacing()
+
+    igTextWrapped("Credits: " & app.config["authors"].getSeq().mapIt(it.getString()).join(", "))
 
     if igButton("Ok"):
       igCloseCurrentPopup()
+
+    igSameLine()
+
+    igText(app.config["version"].getString())
 
     igEndPopup()
 
@@ -117,7 +127,8 @@ proc display(app: var App) = # Called in the main loop
 
   igRender()
 
-  glClearColor(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
+  let bgColor = igGetStyle().colors[WindowBg.ord]
+  glClearColor(bgColor.x, bgColor.y, bgColor.z, bgColor.w)
   glClear(GL_COLOR_BUFFER_BIT)
 
   igOpenGL3RenderDrawData(igGetDrawData())  
@@ -140,7 +151,7 @@ proc initWindow(app: var App) =
     quit(-1)
 
   # Set the window icon
-  var icon = initGLFWImage(app.config["iconPath"].getString().readImage())
+  var icon = initGLFWImage(app.config["iconPath"].getPath().readImage())
   app.win.setWindowIcon(1, icon.addr)
 
   app.win.setWindowSizeLimits(app.config["minSize"][0].getInt().int32, app.config["minSize"][1].getInt().int32, GLFW_DONT_CARE, GLFW_DONT_CARE) # minWidth, minHeight, maxWidth, maxHeight
@@ -149,6 +160,12 @@ proc initWindow(app: var App) =
   app.win.makeContextCurrent()
 
 proc initPrefs(app: var App) = 
+  when defined(appImage):
+    # Put prefsPath right next to the AppImage
+    let prefsPath = getEnv"APPIMAGE".parentDir / app.config["prefsPath"].getString()
+  else:
+    let prefsPath = app.config["prefsPath"].getString()
+  
   app.prefs = toPrefs({
     win: {
       x: 0,
@@ -156,7 +173,7 @@ proc initPrefs(app: var App) =
       width: 500,
       height: 500
     }
-  }).initPrefs(app.config["prefsPath"].getString())
+  }).initPrefs(prefsPath)
 
 proc initconfig*(app: var App, settings: PrefsNode) = 
   # Add the preferences with the values defined in config["settings"]
@@ -186,7 +203,7 @@ proc terminate(app: var App) =
   app.win.destroyWindow()
 
 proc main() =
-  var app = initApp(configPath.readPrefs())
+  var app = initApp(configPath.getPath().readPrefs())
 
   doAssert glfwInit()
 
@@ -196,18 +213,14 @@ proc main() =
 
   let context = igCreateContext()
   let io = igGetIO()
-  app.font = io.fonts.addFontFromFileTTF(app.config["fontPath"].getString(), app.config["fontSize"].getFloat())
+  app.font = io.fonts.addFontFromFileTTF(app.config["fontPath"].getPath(), app.config["fontSize"].getFloat())
 
   io.iniFilename = nil # Disable ini file
 
   doAssert igGlfwInitForOpenGL(app.win, true)
   doAssert igOpenGL3Init()
 
-  setIgStyle(app.config["stylePath"].getString()) # Load application style
-  # igStyleColorsCherry()
-  # igStyleColorsClassic()
-  # igStyleColorsLight()
-  # igStyleColorsDark()
+  setIgStyle(app.config["stylePath"].getPath()) # Load application style
 
   while not app.win.windowShouldClose:
     app.display()
@@ -218,7 +231,7 @@ proc main() =
   context.igDestroyContext()
 
   app.terminate()
-
+  
   glfwTerminate()
 
 when isMainModule:

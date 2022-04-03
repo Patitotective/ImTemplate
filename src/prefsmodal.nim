@@ -3,9 +3,9 @@ import std/strutils
 import niprefs
 import nimgl/imgui
 
-import common
+import utils
 
-proc drawSettings(app: var App, settings: PObjectType)
+proc drawSettings(app: var App, settings: PrefsNode)
 
 proc drawSetting(app: var App, name: string, data: PObjectType) = 
   let settingType = parseEnum[SettingTypes](data["type"])
@@ -133,13 +133,15 @@ proc drawSetting(app: var App, name: string, data: PObjectType) =
   of Section:
     let flags = getFlags[ImGuiTreeNodeFlags](data["flags"])
     if igCollapsingHeader(name.capitalizeAscii(), flags):
-      app.drawSettings(data["content"].getObject())
+      app.drawSettings(data["content"])
 
   if "help" in data:
     igSameLine()
     igHelpMarker(data["help"].getString())
 
-proc drawSettings(app: var App, settings: PObjectType) = 
+proc drawSettings(app: var App, settings: PrefsNode) = 
+  assert settings.kind == PObject
+
   for name, data in settings:
     if parseEnum[SettingTypes](data["type"]) != Section:
       if name notin app.prefs:
@@ -155,7 +157,7 @@ proc drawPrefsModal*(app: var App) =
   igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))
 
   if igBeginPopupModal("Preferences", flags = makeFlags(AlwaysAutoResize)):
-    app.drawSettings(app.config["settings"].getObject())
+    app.drawSettings(app.config["settings"])
 
     if igButton("Save"):
       for name, val in app.cache:
