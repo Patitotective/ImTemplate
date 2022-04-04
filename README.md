@@ -178,7 +178,7 @@ It's (only `when defined(appImage)`) going to look for that path inside the `dat
 
 (You could also try [Snap](https://snapcraft.io/) or [Flatpak](https://flatpak.org/) and if you get it working please let me know).
 
-## Examples
+## Generated from ImTemplate
 - [ImPasswordGen](https://github.com/Patitotective/ImPasswordGen)
 
 ## About
