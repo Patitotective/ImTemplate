@@ -165,7 +165,7 @@ proc initPrefs(app: var App) =
     # Put prefsPath right next to the AppImage
     let prefsPath = getEnv"APPIMAGE".parentDir / app.config["prefsPath"].getString()
   else:
-    let prefsPath = app.config["prefsPath"].getString()
+    let prefsPath = getAppDir() / app.config["prefsPath"].getString()
   
   app.prefs = toPrefs({
     win: {
