@@ -152,7 +152,10 @@ proc drawSettings(app: var App, settings: PrefsNode) =
     app.drawSetting(name, data.getObject())
 
 proc drawPrefsModal*(app: var App) = 
-  var center: ImVec2
+  var
+    center: ImVec2
+    # close: bool
+
   getCenterNonUDT(center.addr, igGetMainViewport())
   igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))
 
@@ -166,9 +169,37 @@ proc drawPrefsModal*(app: var App) =
       igCloseCurrentPopup()
     
     igSameLine()
-    
+
+    #[
+    if igButton("Reset"):
+      igOpenPopup("Reset?")
+
+    igSameLine()
+    ]#
+
     if igButton("Cancel"):
       app.cache = default PObjectType
       igCloseCurrentPopup()
+
+    #[
+    if igBeginPopupModal("Reset?", flags = makeFlags(AlwaysAutoResize)):
+      igText("Are you sure you want to reset the preferences?\nYou won't be able to undo this action")
+      
+      if igButton("Yes"):
+        close = true
+        app.prefs.overwrite()
+        app.cache = default PObjectType
+        igCloseCurrentPopup()
+
+      igSameLine()
+    
+      if igButton("Cancel"):
+        igCloseCurrentPopup()
+
+      igEndPopup()
+
+    if close:
+      igCloseCurrentPopup()
+    ]#
 
     igEndPopup()

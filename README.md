@@ -30,10 +30,6 @@ comment="ImExample is a simple ImGui application example"
 version="0.1.0"
 website="https://github.com/Patitotective/ImTemplate"
 authors=["Patitotective", "Cristobal", "Inu147"]
-
-# AppImage
-outDir="build"
-resourcesDir="data"
 categories=["Utility"]
 
 prefsPath="ImExample.niprefs"
@@ -68,11 +64,7 @@ Using the information from the config file, ImTemplate creates a simple about mo
 - `version`: Application's version.
 - `website`: A link where you can find more information about the app.
 - `authors`: A sequence of strings to display in the about modal.
-
-(See [AppImage](#appimage-linux))
-- `outDir`: AppImage's output directory.
-- `resourcesDir`: Directory inside `AppDir` to store the resources in.
-- `categories`: Sequence of [registered categories](https://specifications.freedesktop.org/menu-spec/latest/apa.html).
+- `categories`: Sequence of [registered categories](https://specifications.freedesktop.org/menu-spec/latest/apa.html) (for the AppImage).
 
 (Paths)
 - `prefsPath`: The path to save the (user) prefs file.
@@ -159,7 +151,7 @@ sudo chmod +x /usr/local/bin/appimagetool
 ```
 2. (Install `nimble install nake` and) run `nake build` (or to build and run it use `nake run`)
 
-After that a new `ImExample-x86_64.AppImage` (architecture may change) file should be created inside `config["outDir"]`.
+After that a new `ImExample-x86_64.AppImage` (architecture may change) file should be created inside `AppDir`.
 
 #### Resources
 If you build your application as an AppImage you may want to have some resources like the icon or the font.  
@@ -172,7 +164,7 @@ resources = [
   config["fontPath"].getString()
 ]
 ```
-These resources are going to be copied from their path to `config["resourcesDir"]` (by default `data`).  
+These resources are going to be copied from their path to `AppDir/data`.  
 Then in `main.nim` every time you need to access to some file you call `path.getPath()`.  
 It's (only `when defined(appImage)`) going to look for that path inside the `data` directory inside `APPDIR` environment variable.
 

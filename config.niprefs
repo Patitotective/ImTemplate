@@ -4,10 +4,6 @@ comment="ImExample is a simple ImGui application example"
 version="0.1.0"
 website="https://github.com/Patitotective/ImTemplate"
 authors=["Patitotective", "Cristobal", "Inu147"]
-
-# AppImage
-outDir="build"
-resourcesDir="data"
 categories=["Utility"]
 
 prefsPath="ImExample.niprefs"

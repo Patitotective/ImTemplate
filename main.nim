@@ -8,12 +8,13 @@ import nimgl/imgui, nimgl/imgui/[impl_opengl, impl_glfw]
 import src/[utils, prefsmodal]
 
 const
+  resourcesDir = "data"
   configPath = "config.niprefs"
 
 proc getPath(path: string): string = 
   # When running on an AppImage get the path from the AppImage resources
   when defined(appImage):
-    result = getEnv"APPDIR" / "data" / path.extractFilename()
+    result = getEnv"APPDIR" / resourcesDir / path.extractFilename()
   else:
     result = getAppDir() / path
 
@@ -33,8 +34,8 @@ proc drawAboutModal(app: var App) =
       image = app.config["iconPath"].getPath().readImage()
     image.loadTextureFromData(texture)
     
-    igImage(cast[ptr ImTextureID](texture), igVec2(image.width.float32, image.height.float32))
-    
+    igImage(cast[ptr ImTextureID](texture), igVec2(64, 64)) # Or igVec2(image.width.float32, image.height.float32)
+
     igSameLine()
     
     igPushTextWrapPos(250)
@@ -164,7 +165,7 @@ proc initPrefs(app: var App) =
     # Put prefsPath right next to the AppImage
     let prefsPath = getEnv"APPIMAGE".parentDir / app.config["prefsPath"].getString()
   else:
-    let prefsPath = getAppDir() / app.config["prefsPath"].getString()
+    let prefsPath = app.config["prefsPath"].getString()
   
   app.prefs = toPrefs({
     win: {

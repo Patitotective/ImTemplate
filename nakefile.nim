@@ -24,6 +24,7 @@ proc checkFile(path: string) =
     discard existsOrCreateDir(dir)
 
 const
+  resourcesDir = "data"
   configPath = "config.niprefs"
   desktop = """
   [Desktop Entry]
@@ -46,7 +47,6 @@ let
     config["fontPath"].getString()
   ]
   name = config["name"].getString() 
-  outDir = config["outDir"].getString()
 
 task "build", "Build AppImage application":
   checkPath("AppDir")
@@ -65,23 +65,48 @@ task "build", "Build AppImage application":
   shell "nim cpp -d:release -d:appImage --app:gui --out:AppDir/AppRun main.nim"
 
   # Add resources
-  checkPath("AppDir" / config["resourcesDir"].getString())
+  checkPath("AppDir" / resourcesDir)
 
   for name, path in resources:
-    copyFile(path, "AppDir" / config["resourcesDir"].getString() / path.extractFilename())
-
-  checkPath(outDir)
+    copyFile(path, "AppDir" / resourcesDir / path.extractFilename())
 
   let appDir = "AppDir".absolutePath()
-  withDir outDir:
-    shell &"appimagetool {appDir}"
+  withDir "AppDir":
+    shell &"appimagetool ."
 
 task "run", "Build (if needed) and run AppImage application":
   if "AppDir/AppRun".needsRefresh("main.nim"):
     runTask("build")
   
-  # First .AppImage in outDir starting with name
-  var appFile = walkFiles(&"{outDir}/{name}*.AppImage").toSeq[0]
+  # First .AppImage in AppDir starting with name
+  var appFile = walkFiles(&"AppDir/{name}*.AppImage").toSeq[0]
 
   shell &"chmod a+x {appFile}" # Make it executable
   shell &"./{appFile}"
+
+#[
+task "buildapp", "Build AppImage using linuxdeply":
+  checkPath("AppDir")
+  writeFile(
+    &"AppDir/{name}.desktop", 
+    desktop % [
+      "name", name, 
+      "categories", config["categories"].getSeq().mapIt(it.getString()).join(";"), 
+      "version", config["version"].getString(), 
+      "comment", config["comment"].getString()
+    ]
+  )
+  copyFile(config["iconPath"].getString(), "AppDir" / ".DirIcon")
+  copyFile(config["svgIconPath"].getString(), "AppDir" / &"{name}.svg")
+
+  shell "nim cpp -d:release -d:appImage --app:gui --out:AppDir/AppRun main.nim"
+
+  # Add resources
+  checkPath("AppDir" / resourcesDir)
+
+  for name, path in resources:
+    copyFile(path, "AppDir" / resourcesDir / path.extractFilename())
+
+  withDir "AppDir":
+    shell &"linuxdeploy --appdir . -e AppRun -d {name}.desktop -i .DirIcon -i {name}.svg -o appimage"
+]#
