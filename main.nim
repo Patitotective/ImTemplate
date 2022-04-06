@@ -32,8 +32,9 @@ proc drawAboutModal(app: var App) =
     var
       texture: GLuint
       image = app.config["iconPath"].getPath().readImage()
+
     image.loadTextureFromData(texture)
-    
+
     igImage(cast[ptr ImTextureID](texture), igVec2(64, 64)) # Or igVec2(image.width.float32, image.height.float32)
 
     igSameLine()

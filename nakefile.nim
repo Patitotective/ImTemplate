@@ -83,30 +83,3 @@ task "run", "Build (if needed) and run AppImage application":
 
   shell &"chmod a+x {appFile}" # Make it executable
   shell &"./{appFile}"
-
-#[
-task "buildapp", "Build AppImage using linuxdeply":
-  checkPath("AppDir")
-  writeFile(
-    &"AppDir/{name}.desktop", 
-    desktop % [
-      "name", name, 
-      "categories", config["categories"].getSeq().mapIt(it.getString()).join(";"), 
-      "version", config["version"].getString(), 
-      "comment", config["comment"].getString()
-    ]
-  )
-  copyFile(config["iconPath"].getString(), "AppDir" / ".DirIcon")
-  copyFile(config["svgIconPath"].getString(), "AppDir" / &"{name}.svg")
-
-  shell "nim cpp -d:release -d:appImage --app:gui --out:AppDir/AppRun main.nim"
-
-  # Add resources
-  checkPath("AppDir" / resourcesDir)
-
-  for name, path in resources:
-    copyFile(path, "AppDir" / resourcesDir / path.extractFilename())
-
-  withDir "AppDir":
-    shell &"linuxdeploy --appdir . -e AppRun -d {name}.desktop -i .DirIcon -i {name}.svg -o appimage"
-]#
