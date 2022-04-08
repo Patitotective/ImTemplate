@@ -95,8 +95,11 @@ proc drawMenuBar(app: var App) =
   app.drawPrefsModal()
 
 proc drawMain(app: var App) = # Draw the main window
-  igBegin(app.config["name"].getString(), flags = makeFlags(ImGuiWindowFlags.NoResize, NoMove, NoTitleBar, NoCollapse, MenuBar))
-  igSetWindowPos(igVec2(0, 0), Always)
+  let viewport = igGetMainViewport()
+  igSetNextWindowPos(viewport.pos)
+  igSetNextWindowSize(viewport.size)
+
+  igBegin(app.config["name"].getString(), flags = makeFlags(ImGuiWindowFlags.NoResize, ImGuiWindowFlags.NoSavedSettings, NoMove, NoDecoration, MenuBar))
 
   app.drawMenuBar()
 
@@ -110,11 +113,6 @@ proc drawMain(app: var App) = # Draw the main window
   igText("counter = %d", app.counter)
 
   igText("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
-  
-  # Update ImGUi window size to fit GLFW window size
-  var width, height: int32
-  app.win.getWindowSize(width.addr, height.addr)
-  igSetWindowSize(igVec2(width.float32, height.float32), Always)
 
   igEnd()
 
