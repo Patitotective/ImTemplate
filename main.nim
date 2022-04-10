@@ -5,7 +5,7 @@ import niprefs
 import nimgl/[opengl, glfw]
 import nimgl/imgui, nimgl/imgui/[impl_opengl, impl_glfw]
 
-import src/[utils, prefsmodal]
+import src/[utils, prefsmodal, icons]
 
 const
   resourcesDir = "data"
@@ -61,21 +61,21 @@ proc drawMenuBar(app: var App) =
 
   if igBeginMenuBar():
     if igBeginMenu("File"):
-      igMenuItem("Preferences", "Ctrl+P", openPrefs.addr)
-      if igMenuItem("Quit", "Ctrl+Q"):
+      igMenuItem("Preferences " & FA_Cog, "Ctrl+P", openPrefs.addr)
+      if igMenuItem("Quit " & FA_Times, "Ctrl+Q"):
         app.win.setWindowShouldClose(true)
       igEndMenu()
 
     if igBeginMenu("Edit"):
-      if igMenuItem("Reset Counter", "Ctrl+R"):
+      if igMenuItem("Reset Counter " & FA_Refresh, "Ctrl+R"):
         app.counter = 0
-      if igMenuItem("Paste", "Ctrl+V"):
+      if igMenuItem("Paste " & FA_Clipboard, "Ctrl+V"):
         echo "paste"
 
       igEndMenu()
 
     if igBeginMenu("About"):
-      if igMenuItem("Website"):
+      if igMenuItem("Website " & FA_Heart):
         app.config["website"].getString().openDefaultBrowser()
 
       igMenuItem("About " & app.config["name"].getString(), shortcut = nil, p_selected = openAbout.addr)
@@ -103,16 +103,16 @@ proc drawMain(app: var App) = # Draw the main window
 
   app.drawMenuBar()
 
-  igText("This is some useful text.")
+  igText("Hello World " & FA_User)
 
   igSliderFloat("float", app.somefloat.addr, 0.0f, 1.0f)
 
-  if igButton("Button"):
+  if igButton("Button " & FA_HandPointerO):
     inc app.counter
   igSameLine()
   igText("counter = %d", app.counter)
 
-  igText("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
+  igText(FA_Info & " Application average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
 
   igEnd()
 
@@ -213,9 +213,14 @@ proc main() =
 
   let context = igCreateContext()
   let io = igGetIO()
+  io.iniFilename = nil # Disable ini file
+
   app.font = io.fonts.addFontFromFileTTF(app.config["fontPath"].getPath(), app.config["fontSize"].getFloat())
 
-  io.iniFilename = nil # Disable ini file
+  # Add ForkAwesome icon font
+  var config = utils.newImFontConfig(mergeMode = true)
+  var ranges = [FA_Min.uint16,  FA_Max.uint16]
+  io.fonts.addFontFromFileTTF(app.config["iconFontPath"].getPath(), app.config["fontSize"].getFloat(), config.addr, ranges[0].addr)
 
   doAssert igGlfwInitForOpenGL(app.win, true)
   doAssert igOpenGL3Init()

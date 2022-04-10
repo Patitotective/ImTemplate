@@ -14,8 +14,10 @@ Template for making a single-windowed (or not) ImGui application in Nim.
 - `assets`: 
 	- `icon.png`, `icon.svg`: Application's icon.
 	- `style.niprefs`: Application's style (using https://github.com/Patitotective/ImStyle).
-	- `Cousine-Regular.ttf`, `DroidSans.ttf`, `Karla-Regular.ttf`, `ProggyClean.ttf`, `Roboto-Regular.ttf`, `ProggyVector Regular.ttf`: Various fonts so you can choose the one you like the most.
+	- `Cousine-Regular.ttf`, `Karla-Regular.ttf`, `Roboto-Regular.ttf`, `ProggyVector Regular.ttf`: Various fonts so you can choose the one you like the most.
+	- `forkawesome-webfont.ttf`: ForkAwesome icon font (see https://forkaweso.me/).
 - `src`:
+	- `icons.nim`: Helper module with ForkAwesome icons unicode points.
 	- `utils.nim`: Anything used by more than one module.
 	- `prefsmodal.nim`: Create the preferences modal (called in `main.nim`)
 
@@ -36,7 +38,8 @@ prefsPath="ImExample.niprefs"
 stylePath="assets/style.niprefs"
 iconPath="assets/icon.png"
 svgIconPath="assets/icon.svg"
-fontPath="assets/ProggyVector Regular.ttf" # Other options are Roboto-Regular.ttf, DroidSans.ttf, Cousine-Regular.ttf, NotoSans-Regular.ttf, ProggyClean.ttf or Karla-Regular.ttf
+iconFontPath="assets/forkawesome-webfont.ttf"
+fontPath="assets/ProggyVector Regular.ttf" # Other options are Roboto-Regular.ttf, Cousine-Regular.ttf or Karla-Regular.ttf
 fontSize=16f
 
 # Window
@@ -67,11 +70,12 @@ Using the information from the config file, ImTemplate creates a simple about mo
 - `categories`: Sequence of [registered categories](https://specifications.freedesktop.org/menu-spec/latest/apa.html) (for the AppImage).
 
 (Paths)
-- `prefsPath`: The path to save the (user) prefs file.
-- `stylePath`: The path of the application style (using https://github.com/Patitotective/ImStyle).
-- `iconPath`: The path of the application icon.
-- `fontPath`: The path of the application font.
-- `fontSize`: The (float) size of the font.
+- `prefsPath`: Prefs's path (using https://patitotective.github.io/niprefs/).
+- `stylePath`: Application's style path (using https://github.com/Patitotective/ImStyle).
+- `iconPath`: Application's icon path.
+- `iconFontPath`: ForkAwesome's font path.
+- `fontPath`: Application's font path.
+- `fontSize`: Font's size.
 
 - `minSize`: Window's minimum size.
 - `settings`: See [`settings`](#settings).
@@ -137,7 +141,7 @@ To include the application resources in the binary package, you need to specify 
 # Package
 
 ...
-installFiles = @["config.niprefs", "assets/icon.png", "assets/style.niprefs", "assets/ProggyVector Regular.ttf"]
+installFiles = @["config.niprefs", "assets/icon.png", "assets/style.niprefs", "assets/ProggyVector Regular.ttf", "assets/forkawesome-webfont.ttf"]
 
 ...
 ```
@@ -157,10 +161,12 @@ After that a new `ImExample-x86_64.AppImage` (architecture may change) file shou
 If you build your application as an AppImage you may want to have some resources like the icon or the font.  
 These are defined in the `nakefile.nim` module, the default resources are:
 ```nim
+...
 resources = [
   configPath, 
   config["iconPath"].getString(), 
   config["stylePath"].getString(), 
+  config["iconFontPath"].getString()
   config["fontPath"].getString()
 ]
 ```

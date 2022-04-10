@@ -44,6 +44,7 @@ let
     configPath, 
     config["iconPath"].getString(), 
     config["stylePath"].getString(), 
+    config["iconFontPath"].getString()
     config["fontPath"].getString()
   ]
   name = config["name"].getString() 

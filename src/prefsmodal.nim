@@ -10,7 +10,7 @@ proc drawSettings(app: var App, settings: PrefsNode)
 proc drawSetting(app: var App, name: string, data: PObjectType) = 
   let settingType = parseEnum[SettingTypes](data["type"])
   if settingType != Section:
-    igText(name.capitalizeAscii() & ": ")
+    igText(name.replace("_", " ").capitalizeAscii() & ": ")
     igSameLine()
 
   case settingType:
@@ -132,7 +132,7 @@ proc drawSetting(app: var App, name: string, data: PObjectType) =
       app.cache[name].seqV.add col[3].newPFloat()
   of Section:
     let flags = getFlags[ImGuiTreeNodeFlags](data["flags"])
-    if igCollapsingHeader(name.capitalizeAscii(), flags):
+    if igCollapsingHeader(name.replace("_", " ").capitalizeAscii(), flags):
       app.drawSettings(data["content"])
 
   if "help" in data:

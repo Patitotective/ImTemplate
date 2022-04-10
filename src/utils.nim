@@ -146,3 +146,13 @@ proc igHelpMarker*(text: string) =
     igTextUnformatted(text)
     igPopTextWrapPos()
     igEndTooltip()
+
+proc newImFontConfig*(mergeMode = false): ImFontConfig =
+  result.fontDataOwnedByAtlas = true
+  result.fontNo = 0
+  result.oversampleH = 3
+  result.oversampleV = 1
+  result.pixelSnapH = true
+  result.glyphMaxAdvanceX = float.high
+  result.rasterizerMultiply = 1.0
+  result.mergeMode = mergeMode

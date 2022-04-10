@@ -6,7 +6,7 @@ description      = "A new awesome ImGui application"
 license          = "MIT"
 namedBin["main"] = "ImExample"
 binDir           = "build"
-installFiles     = @["config.niprefs", "assets/icon.png", "assets/style.niprefs", "assets/ProggyVector Regular.ttf"]
+installFiles     = @["config.niprefs", "assets/icon.png", "assets/style.niprefs", "assets/ProggyVector Regular.ttf", "assets/forkawesome-webfont.ttf"]
 
 # Dependencies
 

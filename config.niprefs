@@ -10,7 +10,8 @@ prefsPath="ImExample.niprefs"
 stylePath="assets/style.niprefs"
 iconPath="assets/icon.png"
 svgIconPath="assets/icon.svg"
-fontPath="assets/ProggyVector Regular.ttf" # Other options are Roboto-Regular.ttf, DroidSans.ttf, Cousine-Regular.ttf, NotoSans-Regular.ttf, ProggyClean.ttf or Karla-Regular.ttf
+iconFontPath="assets/forkawesome-webfont.ttf"
+fontPath="assets/ProggyVector Regular.ttf" # Other options are Roboto-Regular.ttf, Cousine-Regular.ttf or Karla-Regular.ttf
 fontSize=16f
 
 # Window
