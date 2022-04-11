@@ -4,21 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       tagName:
+        description: Tag name
         type: string
         required: true
       releaseName: 
-        default: ${{ github.event.inputs.tagName }}
-        required: false
+        description: Release name
+        required: true
         type: string
-      title:
-        description: Release title
-        default: ${{ github.event.inputs.releaseName }}
-        required: false
-        type: string
-      prerelease:
-        default: true
-        required: false
-        type: boolean
+
   push: 
     tags:
       - "v?[0-9].[0-9]+.[0-9]+"
@@ -46,8 +39,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           automatic_release_tag: ${{ github.event.inputs.releaseName }}
-          prerelease: ${{ github.event.inputs.prerelease }}
-          title: ${{ github.event.inputs.title }}
+          prerelease: true
           files: |
             LICENSE
             AppDir/*.AppImage
