@@ -44,12 +44,14 @@ let
     configPath, 
     config["iconPath"].getString(), 
     config["stylePath"].getString(), 
-    config["iconFontPath"].getString()
+    config["iconFontPath"].getString(),
     config["fontPath"].getString()
   ]
   name = config["name"].getString() 
 
 task "build", "Build AppImage application":
+  shell "nimble install -d -y"
+
   checkPath("AppDir")
   writeFile(
     &"AppDir/{name}.desktop", 
