@@ -11,11 +11,6 @@ on:
         description: Release title
         required: true
         type: string
-      draft:
-        description: Draft release
-        default: 'true'
-        required: true
-        type: boolean
 jobs:
   tagged-release:
     name: Tagged Release
