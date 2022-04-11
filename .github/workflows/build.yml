@@ -3,18 +3,19 @@ name: Tagged realease
 on:
   workflow_dispatch:
     inputs:
-      tagName:
+      tag:
         description: Tag name
         type: string
         required: true
-      releaseName: 
-        description: Release name
+      title: 
+        description: Release title
         required: true
         type: string
-
-  push: 
-    tags:
-      - "v?[0-9].[0-9]+.[0-9]+"
+      draft:
+        description: Draft release
+        default: 'true'
+        required: false
+        type: boolean
 jobs:
   tagged-release:
     name: Tagged Release
@@ -38,8 +39,9 @@ jobs:
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: ${{ github.event.inputs.releaseName }}
-          prerelease: true
+          automatic_release_tag: ${{ github.event.inputs.tag }}
+          title: ${{ github.events.inputs.title }}
+          draft: ${{ githu.events.inputs.draft }}
+          prerelease: false
           files: |
-            LICENSE
             AppDir/*.AppImage
