@@ -1,6 +1,6 @@
 # App
 name="ImExample"
-comment="ImExample is a simple ImGui application example"
+comment="ImExample is a simple Dear ImGui application example"
 version="0.1.0"
 website="https://github.com/Patitotective/ImTemplate"
 authors=["Patitotective", "Cristobal", "Inu147"]

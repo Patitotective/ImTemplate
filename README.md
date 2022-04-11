@@ -1,5 +1,5 @@
 # <img title="Icon" width=50 height=50 src="https://github.com/Patitotective/ImTemplate/blob/main/assets/icon.svg"></img> ImTemplate
-Template for making a single-windowed (or not) ImGui application in Nim.
+Template for making a single-windowed (or not) Dear ImGui application in Nim.
 
 ![Main window](https://github.com/Patitotective/ImTemplate/blob/main/screenshots/main.png)
 
@@ -28,7 +28,7 @@ Config about the application so it doesn't need to be compiled again. It is stor
 ```nim
 # App
 name="ImExample"
-comment="ImExample is a simple ImGui application example"
+comment="ImExample is a simple Dear ImGui application example"
 version="0.1.0"
 website="https://github.com/Patitotective/ImTemplate"
 authors=["Patitotective", "Cristobal", "Inu147"]
@@ -150,10 +150,10 @@ installFiles = @["config.niprefs", "assets/icon.png", "assets/style.niprefs", "a
 You can also build your app as an AppImage, you only need to follow these steps:
 1. Install [appimagetool](https://appimage.github.io/appimagetool/) (For Debian/Ubuntu/Arch)
 ```sh
-sudo wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/local/bin/appimagetool
+wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/local/bin/appimagetool
 sudo chmod +x /usr/local/bin/appimagetool
 ```
-2. (Install `nimble install nake` and) run `nake build` (or to build and run it use `nake run`)
+2. Run `nake build` (or to build and run it use `nake run`)
 
 After that a new `ImExample-x86_64.AppImage` (architecture may change) file should be created inside `AppDir`.
 
