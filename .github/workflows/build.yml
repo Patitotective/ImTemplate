@@ -5,11 +5,11 @@ on:
     inputs:
       draftRelease: 
         default: true
-        required: true 
+        required: false 
         type: boolean
       releaseName: 
         default: Test release
-        required: true
+        required: false
         type: string
   push: 
     tags:
