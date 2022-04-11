@@ -41,7 +41,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           automatic_release_tag: ${{ github.event.inputs.tag }}
           title: ${{ github.events.inputs.title }}
-          draft: ${{ github.events.inputs.draft }}
+          draft: false
           prerelease: false
           files: |
             AppDir/*.AppImage
