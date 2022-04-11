@@ -14,7 +14,7 @@ on:
       draft:
         description: Draft release
         default: 'true'
-        required: false
+        required: true
         type: boolean
 jobs:
   tagged-release:
