@@ -178,6 +178,7 @@ It's (only `when defined(appImage)`) going to look for that path inside the `dat
 
 ## Generated from ImTemplate
 - [ImPasswordGen](https://github.com/Patitotective/ImPasswordGen)
+- [ImClocks](https://github.com/Patitotective/ImClocks)
 
 ## About
 - GitHub: https://github.com/Patitotective/ImTemplate.
