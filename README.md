@@ -3,6 +3,13 @@ Template for making a single-windowed (or not) Dear ImGui application in Nim.
 
 ![Main window](https://github.com/Patitotective/ImTemplate/blob/main/screenshots/main.png)
 
+## Features
+- Icon font support.
+- Configuration system.
+- Preferences system (with preferences modal).
+- AppImage support (building with resources).
+- GitHub workflow for releasing a tag and building the AppImage.
+
 ## Structure
 - `README.md`: Project's description (in markdown).
 - `main.nim`: Application's logic.
@@ -179,6 +186,8 @@ It's (only `when defined(appImage)`) going to look for that path inside the `dat
 ## Generated from ImTemplate
 - [ImPasswordGen](https://github.com/Patitotective/ImPasswordGen)
 - [ImClocks](https://github.com/Patitotective/ImClocks)
+
+(To run NimGL in Linux you might need some libraries `sudo apt-get install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl-dev`)
 
 ## About
 - GitHub: https://github.com/Patitotective/ImTemplate.
