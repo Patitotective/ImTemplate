@@ -1,0 +1,27 @@
+---
+name: "tagged-release"
+
+on:
+  push:
+    tags:
+      - "v?[0-9].[0-9]+.[0-9]+"
+jobs:
+  tagged-release:
+    name: "Tagged Release"
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: iffy/install-nim@v4.1.1
+      - name: "Build & test appimage"
+        run: |          
+          nimble install -d
+          nake run
+
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          draft: true
+          prerelease: false
+          files: |
+            AppDir/*.AppImage
