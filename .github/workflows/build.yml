@@ -16,8 +16,7 @@ jobs:
       - uses: iffy/install-nim@v4.1.1
       - name: Install x11 dev libraries
         run: |
-          sudo apt install libx11-dev
-          # sudo apt-get install libxcursor-dev libxrandr-dev libxinerama-dev
+          sudo apt-get install libxcursor-dev libxrandr-dev libxinerama-dev libxcb-xinput-dev
       - name: Install appimagetool
         run: |
           wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/local/bin/appimagetool
