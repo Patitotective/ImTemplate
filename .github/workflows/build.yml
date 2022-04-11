@@ -1,15 +1,23 @@
----
-name: "tagged-release"
+name: Create a tagged realease automatically
 
 on:
-  workflow_dispatch: null
+  workflow_dispatch:
+    inputs:
+      draftRelease: 
+        default: true
+        required: true 
+        type: boolean
+      releaseName: 
+        default: Test release
+        required: true
+        type: string
   push: 
     tags:
       - "v?[0-9].[0-9]+.[0-9]+"
 jobs:
   tagged-release:
-    name: "Tagged Release"
-    runs-on: "ubuntu-latest"
+    name: Tagged Release
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
@@ -28,9 +36,10 @@ jobs:
 
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
-          draft: true
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          automatic_release_tag: ${{ github.event.inputs.releaseName }}
+          draft: ${{ github.event.inputs.draftRelease }}
           prerelease: false
           files: |
+            LICENSE
             AppDir/*.AppImage
