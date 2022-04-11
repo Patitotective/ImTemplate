@@ -7,10 +7,11 @@ on:
         description: Tag name
         type: string
         required: true
-      title: 
-        description: Release title
+      draft: 
+        description: Draft release
+        default: 'false'
         required: true
-        type: string
+        type: boolean
 jobs:
   tagged-release:
     name: Tagged Release
@@ -35,8 +36,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           automatic_release_tag: ${{ github.event.inputs.tag }}
-          title: ${{ github.events.inputs.title }}
-          draft: false
+          draft: ${{ github.events.input.draft == 'true'}}
           prerelease: false
           files: |
             AppDir/*.AppImage
