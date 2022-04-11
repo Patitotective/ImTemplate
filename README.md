@@ -1,7 +1,7 @@
 # <img title="Icon" width=50 height=50 src="https://github.com/Patitotective/ImTemplate/blob/main/assets/icon.svg"></img> ImTemplate
 Template for making a single-windowed (or not) Dear ImGui application in Nim.
 
-![Main window](https://github.com/Patitotective/ImTemplate/blob/main/screenshots/main.png)
+![Main window](https://user-images.githubusercontent.com/79225325/162832213-cfcf3304-3b44-4917-acb8-79a038ecd5f8.png)
 
 ## Features
 - Icon font support.
@@ -66,7 +66,8 @@ https://github.com/Patitotective/ImTemplate/blob/main/src/config.niprefs
 
 ### About Modal
 Using the information from the config file, ImTemplate creates a simple about modal.
-![About modal](https://github.com/Patitotective/ImTemplate/blob/main/screenshots/aboutmodal.png)
+
+![About modal](https://user-images.githubusercontent.com/79225325/162832316-daae0575-b840-4d66-bf39-7c287d282e57.png)
 
 ### Keys Explanation
 - `name`: Application's name.
@@ -89,7 +90,8 @@ Using the information from the config file, ImTemplate creates a simple about mo
 
 ### `settings`
 Define the preferences the user can modify from the preferences window (preferences that will be saved at `config["prefsPath"]`).
-![Preferences modal](https://github.com/Patitotective/ImTemplate/blob/main/screenshots/prefsmodal.png)
+
+![Prefs modal](https://user-images.githubusercontent.com/79225325/162832406-888ac721-7c2b-4524-b9c8-0654878215e3.png)
 
 All the `settings` children keys will get stored at `config["prefsPath"]` with [niprefs](https://patitotective.github.io/niprefs/) (`input` in this example).
 Depending on each `type`, required keys may change, so go check [config.niprefs](https://github.com/Patitotective/ImTemplate/blob/main/src/config.niprefs#L24) to see which keys which types require.  
@@ -113,7 +115,8 @@ In the case of `input`, these are the required keys.
 - `Color4`: Color edit RGBA.
 
 #### `Section`
-![Settings section](https://github.com/Patitotective/ImTemplate/blob/main/screenshots/prefsmodal1.png)
+
+![Settings section](https://user-images.githubusercontent.com/79225325/162832465-b3d8d593-dfed-4ddb-8ef6-1d652c0a32e0.png)
 
 Section types are useful to group similar settings.  
 It fits the settings at `content` inside a [collapsing header](https://nimgl.dev/docs/imgui.html#igCollapsingHeader%2Ccstring%2CImGuiTreeNodeFlags).
