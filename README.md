@@ -183,6 +183,14 @@ It's (only `when defined(appImage)`) going to look for that path inside the `dat
 
 (You could also try [Snap](https://snapcraft.io/) or [Flatpak](https://flatpak.org/) and if you get it working please let me know).
 
+### Creating a release
+When you release your app you will want to include the AppImage for linux, to make this easier there is a [Tagged release](https://github.com/Patitotective/ImTemplate/actions/workflows/build.yml) workflow that creates a release (and tag), builds the AppImage and adds it to the release for you.  
+To use it, go to the [Tagged release](https://github.com/Patitotective/ImTemplate/actions/workflows/build.yml), click _Run workflow_, enter the tag name (and check draft release if you want) and click _Run workflow_.
+
+![image](https://user-images.githubusercontent.com/79225325/162830571-6c990649-32b2-4731-89f6-cfa39b27f3c9.png)
+
+It can take various minutes to finish.
+
 ## Generated from ImTemplate
 - [ImPasswordGen](https://github.com/Patitotective/ImPasswordGen)
 - [ImClocks](https://github.com/Patitotective/ImClocks)
