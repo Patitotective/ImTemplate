@@ -16,7 +16,7 @@ jobs:
       - uses: iffy/install-nim@v4.1.1
       - name: "Build & test appimage"
         run: |
-          nimble install nake -y
+          nimble install -d -y
           nake run
 
       - uses: "marvinpinto/action-automatic-releases@latest"
