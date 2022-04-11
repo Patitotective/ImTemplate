@@ -2,7 +2,8 @@
 name: "tagged-release"
 
 on:
-  push:
+  workflow_dispatch: null
+  push: 
     tags:
       - "v?[0-9].[0-9]+.[0-9]+"
 jobs:
