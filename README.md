@@ -4,10 +4,11 @@ Template for making a single-windowed (or not) Dear ImGui application in Nim.
 ![Main window](https://user-images.githubusercontent.com/79225325/162832213-cfcf3304-3b44-4917-acb8-79a038ecd5f8.png)
 
 ## Features
+- AppImage support (for Linux).
 - Icon font support.
 - Configuration system.
-- Preferences system (with preferences modal).
-- AppImage support (building with resources).
+- Data resources support.
+- Preferences system (with a preferences modal).
 - GitHub workflow for releasing a tag and building the AppImage.
 
 ## Structure
@@ -26,12 +27,11 @@ Template for making a single-windowed (or not) Dear ImGui application in Nim.
 - `src`:
 	- `icons.nim`: Helper module with ForkAwesome icons unicode points.
 	- `utils.nim`: Anything used by more than one module.
-	- `prefsmodal.nim`: Create the preferences modal (called in `main.nim`)
-
-(`.gitignore` and `screenshots/` are not relevant)
+	- `prefsmodal.nim`: Draw the preferences modal (called in `main.nim`)
 
 ## Config
-Config about the application so it doesn't need to be compiled again. It is stored using [niprefs](https://patitotective.github.io/niprefs/):
+The application's configuration will store information about the app that you may want to change after compiled and before deployed (like the name or version).   
+It is stored using [niprefs](https://patitotective.github.io/niprefs/) and by default at [`config.niprefs`](https://github.com/Patitotective/ImTemplate/blob/main/src/config.niprefs):
 ```nim
 # App
 name="ImExample"
@@ -41,7 +41,6 @@ website="https://github.com/Patitotective/ImTemplate"
 authors=["Patitotective", "Cristobal", "Inu147"]
 categories=["Utility"]
 
-prefsPath="ImExample.niprefs"
 stylePath="assets/style.niprefs"
 iconPath="assets/icon.png"
 svgIconPath="assets/icon.svg"
@@ -56,13 +55,12 @@ minSize=[200, 200] # Width, height
 settings=>
   input=>
     type="input"
-    default=""
+    default="Hellow World"
     max=100
-    flags="EnterReturnsTrue" # See https://nimgl.dev/docs/imgui.html#ImGuiInputTextFlags
-    help="Press enter to save"
+    flags="None" # See https://nimgl.dev/docs/imgui.html#ImGuiInputTextFlags
+    help="Help Message"
 	...
 ```
-https://github.com/Patitotective/ImTemplate/blob/main/src/config.niprefs
 
 ### About Modal
 Using the information from the config file, ImTemplate creates a simple about modal.

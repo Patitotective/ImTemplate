@@ -1,5 +1,7 @@
-import std/[strutils, sequtils, browsers, os]
+import std/[strutils, os]
 
+when defined(release):
+  import assets
 import imstyle
 import niprefs
 import nimgl/[opengl, glfw]
@@ -7,35 +9,44 @@ import nimgl/imgui, nimgl/imgui/[impl_opengl, impl_glfw]
 
 import src/[utils, prefsmodal, icons]
 
-const
-  resourcesDir = "data"
-  configPath = "config.niprefs"
+const configPath = "config.niprefs"
 
-proc getPath(path: string): string = 
-  # When running on an AppImage get the path from the AppImage resources
-  when defined(appImage):
-    result = getEnv"APPDIR" / resourcesDir / path.extractFilename()
+proc getCacheDir(app: App): string = 
+  getCacheDir(app.config["name"].getString())
+
+proc getData(path: string): string = 
+  when defined(release):
+    path.getAsset()
   else:
-    result = getAppDir() / path
+    path.readFile()
 
-proc getPath(path: PrefsNode): string = 
-  path.getString().getPath()
+proc getData(node: PrefsNode): string = 
+  node.getString().getData()
 
-proc drawAboutModal(app: var App) = 
+proc drawAboutModal(app: App) = 
+  let
+    style = igGetStyle()
+    drawList = igGetWindowDrawList()
   var center: ImVec2
   getCenterNonUDT(center.addr, igGetMainViewport())
   igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))
 
-  if igBeginPopupModal("About " & app.config["name"].getString(), flags = makeFlags(AlwaysAutoResize)):
+  let unusedOpen = true
+  if igBeginPopupModal("About " & app.config["name"].getString(), unusedOpen.unsafeAddr, flags = makeFlags(ImGuiWindowFlags.NoResize)):
 
     # Display icon image
     var
       texture: GLuint
-      image = app.config["iconPath"].getPath().readImage()
+      image = app.config["iconPath"].getData().readImageFromMemory()
 
     image.loadTextureFromData(texture)
 
     igImage(cast[ptr ImTextureID](texture), igVec2(64, 64)) # Or igVec2(image.width.float32, image.height.float32)
+    if igIsItemHovered():
+      if igIsMouseClicked(ImGuiMouseButton.Left):
+        app.config["website"].getString().openURL()
+
+      igSetTooltip(app.config["website"].getString() & " " & FA_ExternalLink)
 
     igSameLine()
     
@@ -45,12 +56,18 @@ proc drawAboutModal(app: var App) =
 
     igSpacing()
 
-    igTextWrapped("Credits: " & app.config["authors"].getSeq().mapIt(it.getString()).join(", "))
+    igSelectable("Credits", true, makeFlags(ImGuiSelectableFlags.DontClosePopups))
+    if igBeginChild("##credits", igVec2(0, 75)):
+      for author in app.config["authors"]:
+        let (name, url) = block: 
+          let (name,  url) = author.getString().removeInside('<', '>')
+          (name.strip(),  url.strip())
 
-    if igButton("Ok"):
-      igCloseCurrentPopup()
-
-    igSameLine()
+        if igSelectable(name) and url.len > 0:
+            url.openURL()
+        if igIsItemHovered() and url.len > 0:
+          igSetTooltip(url & " " & FA_ExternalLink)
+      igEndChild()
 
     igText(app.config["version"].getString())
 
@@ -75,8 +92,8 @@ proc drawMenuBar(app: var App) =
       igEndMenu()
 
     if igBeginMenu("About"):
-      if igMenuItem("Website " & FA_Heart):
-        app.config["website"].getString().openDefaultBrowser()
+      if igMenuItem("Website " & FA_ExternalLink):
+        app.config["website"].getString().openURL()
 
       igMenuItem("About " & app.config["name"].getString(), shortcut = nil, p_selected = openAbout.addr)
 
@@ -103,7 +120,7 @@ proc drawMain(app: var App) = # Draw the main window
 
   app.drawMenuBar()
 
-  igText("Hello World " & FA_User)
+  igText(app.prefs["input"].getString())
 
   igSliderFloat("float", app.somefloat.addr, 0.0f, 1.0f)
 
@@ -151,7 +168,7 @@ proc initWindow(app: var App) =
     quit(-1)
 
   # Set the window icon
-  var icon = initGLFWImage(app.config["iconPath"].getPath().readImage())
+  var icon = initGLFWImage(app.config["iconPath"].getData().readImageFromMemory())
   app.win.setWindowIcon(1, icon.addr)
 
   app.win.setWindowSizeLimits(app.config["minSize"][0].getInt().int32, app.config["minSize"][1].getInt().int32, GLFW_DONT_CARE, GLFW_DONT_CARE) # minWidth, minHeight, maxWidth, maxHeight
@@ -160,12 +177,6 @@ proc initWindow(app: var App) =
   app.win.makeContextCurrent()
 
 proc initPrefs(app: var App) = 
-  when defined(appImage):
-    # Put prefsPath right next to the AppImage
-    let prefsPath = getEnv"APPIMAGE".parentDir / app.config["prefsPath"].getString()
-  else:
-    let prefsPath = getAppDir() / app.config["prefsPath"].getString()
-  
   app.prefs = toPrefs({
     win: {
       x: 0,
@@ -173,18 +184,22 @@ proc initPrefs(app: var App) =
       width: 500,
       height: 500
     }
-  }).initPrefs(prefsPath)
+  }).initPrefs((app.getCacheDir() / app.config["name"].getString()).changeFileExt("niprefs"))
 
-proc initconfig*(app: var App, settings: PrefsNode) = 
+proc initconfig(app: var App, settings: PrefsNode, parent: string = "") = 
   # Add the preferences with the values defined in config["settings"]
   for name, data in settings: 
     let settingType = parseEnum[SettingTypes](data["type"])
     if settingType == Section:
-      app.initConfig(data["content"])  
-    elif name notin app.prefs:
-      app.prefs[name] = data["default"]
+      app.initConfig(data["content"], parent = name)  
+    elif parent.len > 0:
+      if not app.prefs.hasPath(parent, name):
+        app.prefs[parent, name] = data["default"]
+    else:
+      if name notin app.prefs:
+        app.prefs[name] = data["default"]
 
-proc initApp*(config: PObjectType): App = 
+proc initApp(config: PObjectType): App = 
   result = App(config: config, somefloat: 0.5f, counter: 2)
   result.initPrefs()
   result.initConfig(result.config["settings"])
@@ -203,7 +218,7 @@ proc terminate(app: var App) =
   app.win.destroyWindow()
 
 proc main() =
-  var app = initApp(configPath.getPath().readPrefs())
+  var app = initApp(configPath.getData().parsePrefs())
 
   doAssert glfwInit()
 
@@ -215,17 +230,19 @@ proc main() =
   let io = igGetIO()
   io.iniFilename = nil # Disable ini file
 
-  app.font = io.fonts.addFontFromFileTTF(app.config["fontPath"].getPath(), app.config["fontSize"].getFloat())
+  app.font = io.fonts.igAddFontFromMemoryTTF(app.config["fontPath"].getData(), app.config["fontSize"].getFloat())
 
   # Add ForkAwesome icon font
-  var config = utils.newImFontConfig(mergeMode = true)
-  var ranges = [FA_Min.uint16,  FA_Max.uint16]
-  io.fonts.addFontFromFileTTF(app.config["iconFontPath"].getPath(), app.config["fontSize"].getFloat(), config.addr, ranges[0].addr)
+  var
+    config = utils.newImFontConfig(mergeMode = true)
+    ranges = [FA_Min.uint16,  FA_Max.uint16]
+
+  io.fonts.igAddFontFromMemoryTTF(app.config["iconFontPath"].getData(), app.config["fontSize"].getFloat(), config.addr, ranges[0].addr)
 
   doAssert igGlfwInitForOpenGL(app.win, true)
   doAssert igOpenGL3Init()
 
-  setIgStyle(app.config["stylePath"].getPath()) # Load application style
+  setIgStyle(app.config["stylePath"].getData().parsePrefs()) # Load application style
 
   while not app.win.windowShouldClose:
     app.display()

@@ -3,28 +3,7 @@ import std/[strformat, strutils, sequtils, os]
 import nake
 import niprefs
 
-proc checkPath(path: string) = 
-  ## Iterate through `path.parentDirs` from the root creating all the directories that do not exist.
-  ## **Example:**
-  ## ```nim
-  ## checkPath("a/b/c")
-  ## checkPath("a/b/c/d.png".parentDir)
-  ## ```
-  for dir in path.normalizedPath().parentDirs(fromRoot=true):
-    discard existsOrCreateDir(dir)
-
-proc checkFile(path: string) = 
-  ## Iterate through `path.parentDir.parentDirs` from the root creating all the directories that do not exist.
-  ## **Example:**
-  ## ```nim
-  ## checkFile("a/b/c") # Takes c as a file, not as a directory
-  ## checkFile("a/b/c/d.png") # Only creates a/b/c directories
-  ## ```
-  for dir in path.parentDir.parentDirs(fromRoot=true):
-    discard existsOrCreateDir(dir)
-
 const
-  resourcesDir = "data"
   configPath = "config.niprefs"
   desktop = """
   [Desktop Entry]
@@ -52,7 +31,10 @@ let
 task "build", "Build AppImage application":
   shell "nimble install -d -y"
 
-  checkPath("AppDir")
+  discard existsOrCreateDir("AppDir")
+  if "AppDir/AppRun".needsRefresh("main.nim"):
+    shell "nim cpp -d:release -d:appImage --app:gui --out:AppDir/AppRun main"
+
   writeFile(
     &"AppDir/{name}.desktop", 
     desktop % [
@@ -62,20 +44,14 @@ task "build", "Build AppImage application":
       "comment", config["comment"].getString()
     ]
   )
-  copyFile(config["iconPath"].getString(), "AppDir" / ".DirIcon")
   copyFile(config["svgIconPath"].getString(), "AppDir" / &"{name}.svg")
 
-  shell "nim cpp -d:release -d:appImage --app:gui --out:AppDir/AppRun main.nim"
-
-  # Add resources
-  checkPath("AppDir" / resourcesDir)
-
-  for name, path in resources:
-    copyFile(path, "AppDir" / resourcesDir / path.extractFilename())
-
-  let appDir = "AppDir".absolutePath()
-  withDir "AppDir":
-    shell &"appimagetool ."
+  let appimagetoolPath = "appimagetool-x86_64.AppImage"
+  if not silentShell("Trying to build AppImage with appimagetool", "appimagetool AppDir"): 
+    if not fileExists(appimagetoolPath):
+      silentShell &"Dowloading {appimagetoolPath}", "wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O ", appimagetoolPath
+      shell "chmod +x ", appimagetoolPath
+    shell appimagetoolPath, " AppDir"
 
 task "run", "Build (if needed) and run AppImage application":
   if "AppDir/AppRun".needsRefresh("main.nim"):

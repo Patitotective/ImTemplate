@@ -43,6 +43,14 @@
      id="layer1"
      transform="translate(-44.925495,-97.149658)">
     <rect
+       style="fill:#ffffff;stroke:none;stroke-width:6.06011;stroke-linecap:round;stroke-linejoin:bevel;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:markers stroke fill"
+       id="rect39306"
+       width="75"
+       height="75"
+       x="40.238251"
+       y="92.462418"
+       ry="3.6303825" />
+    <rect
        style="fill:#404040;fill-opacity:1;stroke-width:3.47958;stroke-linecap:round;stroke-linejoin:round"
        id="rect45551"
        width="65.625511"

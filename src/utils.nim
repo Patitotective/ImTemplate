@@ -1,9 +1,10 @@
-import std/[strutils, strformat, enumutils, macros, typetraits]
-
+import std/[strutils, strformat, typetraits, enumutils, macros, os]
 import chroma
 import niprefs
 import stb_image/read as stbi
 import nimgl/[imgui, glfw, opengl]
+
+import icons
 
 export enumutils
 
@@ -114,12 +115,21 @@ proc igVec2*(x, y: float32): ImVec2 = ImVec2(x: x, y: y)
 
 proc igVec4*(x, y, z, w: float32): ImVec4 = ImVec4(x: x, y: y, z: z, w: w)
 
+proc igGetContentRegionAvail*(): ImVec2 = 
+  igGetContentRegionAvailNonUDT(result.addr)
+
+proc igGetItemRectMin*(): ImVec2 = 
+  igGetItemRectMinNonUDT(result.addr)
+
+proc igGetItemRectMax*(): ImVec2 = 
+  igGetItemRectMaxNonUDT(result.addr)
+
 proc initGLFWImage*(data: ImageData): GLFWImage = 
   result = GLFWImage(pixels: cast[ptr cuchar](data.image[0].unsafeAddr), width: int32 data.width, height: int32 data.height)
 
-proc readImage*(path: string): ImageData = 
+proc readImageFromMemory*(data: string): ImageData = 
   var channels: int
-  result.image = stbi.load(path, result.width, result.height, channels, stbi.Default)
+  result.image = stbi.loadFromMemory(cast[seq[byte]](data), result.width, result.height, channels, stbi.Default)
 
 proc loadTextureFromData*(data: var ImageData, outTexture: var GLuint) =
     # Create a OpenGL texture identifier
@@ -156,3 +166,60 @@ proc newImFontConfig*(mergeMode = false): ImFontConfig =
   result.glyphMaxAdvanceX = float.high
   result.rasterizerMultiply = 1.0
   result.mergeMode = mergeMode
+
+proc igAddFontFromMemoryTTF*(self: ptr ImFontAtlas, data: string, size_pixels: float32, font_cfg: ptr ImFontConfig = nil, glyph_ranges: ptr ImWchar = nil): ptr ImFont {.discardable.} = 
+  let igFontStr = cast[cstring](igMemAlloc(data.len.uint))
+  igFontStr[0].unsafeAddr.copyMem(data[0].unsafeAddr, data.len)
+  result = self.addFontFromMemoryTTF(igFontStr, data.len.int32, sizePixels, font_cfg, glyph_ranges)
+
+proc openURL*(url: string) = 
+  when defined(MacOS) or defined(MacOSX):
+    discard execShellCmd("open " & url)
+  elif defined(Windows):
+    discard execShellCmd("start " & url)
+  else:
+    discard execShellCmd("xdg-open " & url)
+
+proc igAddUnderLine*(col: uint32) = 
+  var 
+    min = igGetItemRectMin()
+    max = igGetItemRectMax()
+
+  min.y = max.y
+  igGetWindowDrawList().addLine(min, max, col, 1f)
+
+proc igTextURL*(name: string, url: string, sameLineBefore, sameLineAfter: bool = true) = 
+  let style = igGetStyle()
+  if sameLineBefore: igSameLine(0f, style.itemInnerSpacing.x)
+
+  igPushStyleColor(ImGuiCol.Text, igGetColorU32(CheckMark))
+  igText(name)
+  igPopStyleColor()
+
+  if igIsItemHovered():
+    if igIsMouseClicked(ImGuiMouseButton.Left):
+      url.openURL()
+
+    igAddUnderLine(igGetColorU32(CheckMark))
+    igSetTooltip(url & " " & FA_ExternalLink)
+
+  if sameLineAfter: igSameLine(0f, style.itemInnerSpacing.x)
+
+proc removeInside*(text: string, open, close: char): tuple[text: string, inside: string] = 
+  ## Remove the characters inside open..close from text, return text and the removed characters
+  runnableExamples:
+    assert "Hello<World>".removeInside('<', '>') == ("Hello", "World")
+  var inside = false
+  for i in text:
+    if i == open:
+      inside = true
+      continue
+
+    if not inside:
+      result.text.add i
+
+    if i == close:
+      inside = false
+
+    if inside:
+      result.inside.add i
