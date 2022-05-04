@@ -1,7 +1,7 @@
 name: Tagged realease
 
 on:
-  release
+  release: [released, prereleased]
   # push:
     # tags:
       # - '*'
