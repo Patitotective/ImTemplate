@@ -22,7 +22,7 @@ requires "https://github.com/Patitotective/ImStyle >= 0.1.0"
 
 task bundleData, "Bundle data resources":
   # Update path env variable
-  when defined(Windows): exec fmt"set PATH=""%PATH%;{getHomeDir}/.nimble/bin"""
+  when defined(Windows): exec fmt"set PATH=""%PATH%;{getHomeDir()}/.nimble/bin"""
   var resources = ""; for resource in installFiles: resources.add "-f=" & resource.replace(" ", "\\ ") & " "
   exec "nimassets " & resources
 
