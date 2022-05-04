@@ -131,6 +131,10 @@ proc drawMain(app: var App) = # Draw the main window
 
   igText(FA_Info & " Application average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
 
+  if igCollapsingHeader("Preferences"):
+    for name, val in app.prefs.content:
+      igSelectable(name & "=" & $val)
+
   igEnd()
 
 proc display(app: var App) = # Called in the main loop

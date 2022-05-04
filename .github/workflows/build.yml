@@ -1,17 +1,11 @@
 name: Tagged realease
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: Tag name
-        type: string
-        required: true
-      draft: 
-        description: Draft release
-        default: 'false'
-        required: true
-        type: boolean
+  release
+  # push:
+    # tags:
+      # - '*'
+
 jobs:
   tagged-release:
     name: Tagged Release
@@ -27,16 +21,15 @@ jobs:
         run: |
           wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/local/bin/appimagetool
           sudo chmod +x /usr/local/bin/appimagetool
-      - name: Build and run an AppImage
+      - name: Build and run AppImage
         run: |
           nimble install -d -y
-          nake run
-
-      - uses: "marvinpinto/action-automatic-releases@latest"
+          nake build
+          chmod a+x AppDir/*.AppImage
+          ./AppDir/*.AppImage
+      - name: Upload release binaries
+        uses: alexellis/upload-assets@0.2.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: ${{ github.event.inputs.tag }}
-          draft: ${{ github.events.input.draft == 'true'}}
-          prerelease: false
-          files: |
-            AppDir/*.AppImage
+          asset_paths: '["AppDir/*.AppImage"]'
