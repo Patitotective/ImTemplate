@@ -21,9 +21,8 @@ requires "nimassets >= 0.2.4"
 requires "https://github.com/Patitotective/ImStyle >= 0.1.0"
 
 task bundleData, "Bundle data resources":
-  # Update path env variable
   var resources = ""; for resource in installFiles: resources.add "-f=" & resource.replace(" ", "\\ ") & " "
-  exec getHomeDir() / "./nimble/bin/nimassets " & resources
+  exec "nimassets " & resources
 
 task buildApp, "Build the application":
   exec "nimble install -d -y"
