@@ -27,4 +27,4 @@ task bundleData, "Bundle data resources":
 task buildApp, "Build the application":
   exec "nimble install -d -y"
   bundleDataTask()
-  exec "nim cpp -d:release --app:gui main"
+  exec "nim cpp -d:release --app:gui " & "-o:" & namedBin["main"] & " main"

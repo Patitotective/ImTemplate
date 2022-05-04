@@ -24,9 +24,6 @@ proc getData(node: PrefsNode): string =
   node.getString().getData()
 
 proc drawAboutModal(app: App) = 
-  let
-    style = igGetStyle()
-    drawList = igGetWindowDrawList()
   var center: ImVec2
   getCenterNonUDT(center.addr, igGetMainViewport())
   igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))

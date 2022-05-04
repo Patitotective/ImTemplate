@@ -8,8 +8,8 @@ on:
       # - '*'
 
 jobs:
-  upload-builds:
-    name: Upload builds to release
+  build-appimage:
+    name: Build and upload AppImage
     runs-on: ubuntu-18.04
 
     steps:
@@ -25,10 +25,27 @@ jobs:
       - name: Build and run AppImage
         run: |
           nimble install -d -y
-          nake run
+          nake build
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           asset_paths: '["AppDir/*.AppImage"]'
+  build-exe:
+    name: Build and upload .exe
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: iffy/install-nim@v4.1.1
+      - name: Build and run .exe
+        run: |
+          nimble install -d -y
+          nimble buildapp
+      - name: Upload release binaries
+        uses: alexellis/upload-assets@0.2.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          asset_paths: '["*.exe"]'
