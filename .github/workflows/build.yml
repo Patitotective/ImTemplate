@@ -1,4 +1,4 @@
-name: Tagged realease
+name: Upload builds to release
 
 on:
   release: 
@@ -8,8 +8,8 @@ on:
       # - '*'
 
 jobs:
-  tagged-release:
-    name: Tagged Release
+  upload-builds:
+    name: Upload builds to release
     runs-on: ubuntu-18.04
 
     steps:

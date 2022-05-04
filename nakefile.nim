@@ -16,6 +16,7 @@ const
 
   X-AppImage-Name=$name
   X-AppImage-Version=$version
+  X-AppImage-Arch=x86_64
   """.dedent()
 let
   config = configPath.readPrefs()
