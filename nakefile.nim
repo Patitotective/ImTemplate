@@ -28,8 +28,9 @@ let
   ]
   name = config["name"].getString() 
 
-task "build", "Build AppImage application":
+task "build", "Build AppImage":
   shell "nimble install -d -y"
+  shell "nimble bundleData"
 
   discard existsOrCreateDir("AppDir")
   if "AppDir/AppRun".needsRefresh("main.nim"):
@@ -46,19 +47,20 @@ task "build", "Build AppImage application":
   )
   copyFile(config["svgIconPath"].getString(), "AppDir" / &"{name}.svg")
 
-  let appimagetoolPath = "appimagetool-x86_64.AppImage"
-  if not silentShell("Trying to build AppImage with appimagetool", "appimagetool AppDir"): 
-    if not fileExists(appimagetoolPath):
-      silentShell &"Dowloading {appimagetoolPath}", "wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O ", appimagetoolPath
-      shell "chmod +x ", appimagetoolPath
-    shell appimagetoolPath, " AppDir"
+  var appimagetoolPath = "appimagetool"
+  if not silentShell("Checking for appimagetool", appimagetoolPath, "--help") and not fileExists(appimagetoolPath):
+      appimagetoolPath = "appimagetool-x86_64.AppImage"
+      direSilentShell &"Dowloading {appimagetoolPath}", "wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O ", appimagetoolPath
+      shell "chmod +x", appimagetoolPath
 
-task "run", "Build (if needed) and run AppImage application":
+  withDir "AppDir":
+    direShell appimagetoolPath, "."
+
+  echo "Succesfully built AppImage at AppDir/"
+
+task "run", "Build (if needed) and run AppImage":
   if "AppDir/AppRun".needsRefresh("main.nim"):
     runTask("build")
-  
-  # First .AppImage in AppDir starting with name
-  var appFile = walkFiles(&"AppDir/{name}*.AppImage").toSeq[0]
 
-  shell &"chmod a+x {appFile}" # Make it executable
-  shell &"./{appFile}"
+  shell "chmod a+x AppDir/*.AppImage" # Make it executable
+  shell "./AppDir/*.AppImage"

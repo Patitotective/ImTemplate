@@ -24,9 +24,7 @@ jobs:
       - name: Build and run AppImage
         run: |
           nimble install -d -y
-          nake build
-          chmod a+x AppDir/*.AppImage
-          ./AppDir/*.AppImage
+          nake run
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:
