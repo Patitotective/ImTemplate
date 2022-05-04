@@ -1,4 +1,4 @@
-import std/[strutils, os]
+import std/[strutils, strformat, os]
 
 # Package
 
