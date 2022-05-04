@@ -22,7 +22,7 @@ requires "https://github.com/Patitotective/ImStyle >= 0.1.0"
 
 task bundleData, "Bundle data resources":
   var resources = ""; for resource in installFiles: resources.add "-f=" & resource.replace(" ", "\\ ") & " "
-  exec "nimassets " & resources
+  execShellCmd "nimassets " & resources
 
 task buildApp, "Build the application":
   exec "nimble install -d -y"

@@ -44,7 +44,6 @@ jobs:
         run: |
           nimble install -d -y
           echo "$env:HOMEPATH/.nimble/bin/" >> $GITHUB_PATH
-          nimassets
           nimble buildApp
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
