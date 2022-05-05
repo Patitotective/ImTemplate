@@ -26,10 +26,9 @@ proc addEnv(key, val: string) =
 
 task bundleData, "Bundle data resources":
   var resources = ""; for resource in installFiles: resources.add "-f=" & resource.replace(" ", "\\ ") & " "
-  exec "nimassets " & resources
+  exec getHomeDir() / ".nimble/bin/nimassets " & resources
 
 task buildApp, "Build the application":
   exec "nimble install -d -y"
-  addEnv "PATH", getHomeDir() / ".nimble/bin"
   bundleDataTask()
   exec "nim cpp -d:release --app:gui " & "-o:" & namedBin["main"] & " main"
