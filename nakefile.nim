@@ -55,8 +55,13 @@ task "build", "Build AppImage":
       shell "chmod +x", appimagetoolPath
 
   withDir "AppDir":
-    direShell appimagetoolPath, "."
-
+    if "ghRepo" in config:
+      echo "Building updateable AppImage"
+      let ghInfo = config["ghRepo"].getString().split('/')
+      direShell appimagetoolPath, "-u", &"\"gh-releases-zsync|{ghInfo[0]}|{ghInfo[1]}|latest|{name}-*.AppImage.zsync\"", "."
+    else:
+      echo &"ghRepo key not in {configPath}. Skipping updateable AppImage"
+      direShell appimagetoolPath, "."
   echo "Succesfully built AppImage at AppDir/"
 
 task "run", "Build (if needed) and run AppImage":

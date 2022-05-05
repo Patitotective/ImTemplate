@@ -218,19 +218,7 @@ proc terminate(app: var App) =
 
   app.win.destroyWindow()
 
-proc main() =
-  var app = initApp(configPath.getData().parsePrefs())
-
-  doAssert glfwInit()
-
-  app.initWindow()
-
-  doAssert glInit()
-
-  let context = igCreateContext()
-  let io = igGetIO()
-  io.iniFilename = nil # Disable ini file
-
+template initFonts(app: var App, io: ptr ImGuiIO) = 
   app.font = io.fonts.igAddFontFromMemoryTTF(app.config["fontPath"].getData(), app.config["fontSize"].getFloat())
 
   # Add ForkAwesome icon font
@@ -240,21 +228,39 @@ proc main() =
 
   io.fonts.igAddFontFromMemoryTTF(app.config["iconFontPath"].getData(), app.config["fontSize"].getFloat(), config.addr, ranges[0].addr)
 
+proc main() =
+  var app = initApp(configPath.getData().parsePrefs())
+
+  # Init
+  let
+    context = igCreateContext()
+    io = igGetIO()
+
+  io.iniFilename = nil # Disable ini file
+
+  doAssert glfwInit()
+  app.initWindow()
+  app.initFonts(io)
+  doAssert glInit()
+
   doAssert igGlfwInitForOpenGL(app.win, true)
   doAssert igOpenGL3Init()
 
-  setIgStyle(app.config["stylePath"].getData().parsePrefs()) # Load application style
+  # Load application style
+  setIgStyle(app.config["stylePath"].getData().parsePrefs())
 
+  # Main loop
   while not app.win.windowShouldClose:
     app.display()
     app.win.swapBuffers()
 
+  # Shutdown
   igOpenGL3Shutdown()
   igGlfwShutdown()
-  context.igDestroyContext()
-
-  app.terminate()
   
+  context.igDestroyContext()
+  
+  app.terminate()
   glfwTerminate()
 
 when isMainModule:

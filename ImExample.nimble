@@ -15,7 +15,7 @@ requires "nim >= 1.6.2"
 requires "nake >= 1.9.4"
 requires "nimgl >= 1.3.2"
 requires "chroma >= 0.2.4"
-requires "niprefs >= 0.1.61"
+requires "niprefs >= 0.1.62"
 requires "stb_image >= 2.5"
 requires "nimassets >= 0.2.4"
 requires "https://github.com/Patitotective/ImStyle >= 0.1.0"
@@ -27,9 +27,8 @@ task bundleData, "Bundle data resources":
       resources.addQuoted(resource.replace('/', DirSep))
       resources.add " "
   
-  let command = getHomeDir() / ".nimble" / "bin" / "nimassets " & resources
-  echo command
-  exec command
+  # FIXME https://github.com/xmonader/nimassets/issues/14
+  exec getHomeDir() / ".nimble" / "bin" / "nimassets " & resources
 
 task buildApp, "Build the application":
   exec "nimble install -d -y"
