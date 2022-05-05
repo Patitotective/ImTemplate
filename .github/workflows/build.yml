@@ -43,7 +43,6 @@ jobs:
       - name: Build and run .exe
         run: |
           nimble install -d -y
-          echo "$env:HOMEPATH/.nimble/bin/" >> $GITHUB_PATH
           nimble buildApp
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2

@@ -20,11 +20,16 @@ requires "stb_image >= 2.5"
 requires "nimassets >= 0.2.4"
 requires "https://github.com/Patitotective/ImStyle >= 0.1.0"
 
+proc addEnv(key, val: string) = 
+  ## Append to an enviroment variable.
+  putEnv(key, val & PathSep & getEnv("PATH"))
+
 task bundleData, "Bundle data resources":
   var resources = ""; for resource in installFiles: resources.add "-f=" & resource.replace(" ", "\\ ") & " "
-  execShellCmd "nimassets " & resources
+  exec "nimassets " & resources
 
 task buildApp, "Build the application":
   exec "nimble install -d -y"
+  addEnv "PATH", getHomeDir() / ".nimble/bin"
   bundleDataTask()
   exec "nim cpp -d:release --app:gui " & "-o:" & namedBin["main"] & " main"
