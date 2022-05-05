@@ -27,8 +27,9 @@ task bundleData, "Bundle data resources":
       resources.addQuoted(resource.replace('/', DirSep))
       resources.add " "
   
-  echo resources
-  exec getHomeDir() / ".nimble" / "bin" / "nimassets " & resources
+  let command = getHomeDir() / ".nimble" / "bin" / "nimassets " & resources
+  echo command
+  exec command
 
 task buildApp, "Build the application":
   exec "nimble install -d -y"
