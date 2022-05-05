@@ -27,6 +27,7 @@ task bundleData, "Bundle data resources":
       resources.addQuoted(resource.replace('/', DirSep))
       resources.add " "
   
+  echo resources
   exec getHomeDir() / ".nimble" / "bin" / "nimassets " & resources
 
 task buildApp, "Build the application":
