@@ -5,7 +5,9 @@ version="0.2.0"
 website="https://github.com/Patitotective/ImTemplate"
 authors=["Patitotective <https://github.com/Patitotective>", "Cristobal <mailto:cristobalriaga@gmail.com>", "Inu147"]
 categories=["Utility"]
-ghRepo="Patitotective/ImTemplate" # Optional
+# Include it to generate an updateable AppImage
+ghRepo="Patitotective/ImTemplate"
+arch="x86_64" # AppImage architecture
 
 stylePath="assets/style.niprefs"
 iconPath="assets/icon.png"
