@@ -1,4 +1,4 @@
-import std/[strutils, strformat, typetraits, enumutils, macros, os]
+import std/[strutils, strformat, typetraits, enumutils, macros, times, os]
 import chroma
 import niprefs
 import stb_image/read as stbi
@@ -9,16 +9,40 @@ import icons
 export enumutils
 
 type
+  Element* = enum
+    Fire, Earth, Air, Water
+
   App* = ref object
     win*: GLFWWindow
     font*: ptr ImFont
     prefs*: Prefs
-    config*: PObjectType # Prefs table
     cache*: PObjectType # Settings cache
+    config*: PObjectType # Prefs table
 
     # Variables
-    somefloat*: float32
     counter*: int
+    celsius*, fahrenheit*: string
+    currentFlight*: int
+    startDate*, returnDate*: string
+    duration*, startTime*, curTime*: float32
+
+    # Basic tab variables
+    num*: int32
+    elem*: Element
+    checked*: bool
+    angle*: float32
+    double*: float64
+    sliderInt*: int32
+    basicCounter*, clicked*: int
+    dragInt*, dragInt2*: int32
+    color3*: array[3, float32]
+    color4*: array[4, float32]
+    float3*: array[3, float32]
+    buffer*, hintBuffer*: string
+    floatNum*, scientFloat*: float32
+    dragFloat*, dragFloat2*: float32
+    sliderFloat*, sliderFloat2*: float32
+    radioCurrent*, comboCurrent*, listCurrent*: int32
 
   SettingTypes* = enum
     Input # Input text
@@ -115,14 +139,42 @@ proc igVec2*(x, y: float32): ImVec2 = ImVec2(x: x, y: y)
 
 proc igVec4*(x, y, z, w: float32): ImVec4 = ImVec4(x: x, y: y, z: z, w: w)
 
+proc igVec4*(color: Color): ImVec4 = ImVec4(x: color.r, y: color.g, z: color.b, w: color.a)
+
+proc igHSV*(h, s, v: float32, a: float32 = 1f): ImColor = 
+  result.addr.hSVNonUDT(h, s, v, a)
+
 proc igGetContentRegionAvail*(): ImVec2 = 
   igGetContentRegionAvailNonUDT(result.addr)
+
+proc igGetWindowContentRegionMax*(): ImVec2 = 
+  igGetWindowContentRegionMaxNonUDT(result.addr)
+
+proc igGetWindowPos*(): ImVec2 = 
+  igGetWindowPosNonUDT(result.addr)
 
 proc igGetItemRectMin*(): ImVec2 = 
   igGetItemRectMinNonUDT(result.addr)
 
 proc igGetItemRectMax*(): ImVec2 = 
   igGetItemRectMaxNonUDT(result.addr)
+
+proc igCalcTextSize*(text: cstring, text_end: cstring = nil, hide_text_after_double_hash: bool = false, wrap_width: float32 = -1.0'f32): ImVec2 = 
+  igCalcTextSizeNonUDT(result.addr, text, text_end, hide_text_after_double_hash, wrap_width)
+
+proc getCenter*(self: ptr ImGuiViewport): ImVec2 = 
+  getCenterNonUDT(result.addr, self)
+
+proc centerCursorX*(width: float32, align: float = 0.5f, availWidth: float32 = igGetContentRegionAvail().x) = 
+  # let style = igGetStyle()
+  
+  # size.x += style.framePadding.x * 2
+
+  let off = (availWidth - width) * align
+  
+  if off > 0:
+    igSetCursorPosX(igGetCursorPosX() + off)
+
 
 proc initGLFWImage*(data: ImageData): GLFWImage = 
   result = GLFWImage(pixels: cast[ptr cuchar](data.image[0].unsafeAddr), width: int32 data.width, height: int32 data.height)
@@ -223,3 +275,33 @@ proc removeInside*(text: string, open, close: char): tuple[text: string, inside:
 
     if inside:
       result.inside.add i
+
+proc initconfig*(app: var App, settings: PrefsNode, parent: string = "") = 
+  # Add the preferences with the values defined in config["settings"]
+  for name, data in settings: 
+    let settingType = parseEnum[SettingTypes](data["type"])
+    if settingType == Section:
+      app.initConfig(data["content"], parent = name)  
+    elif parent.len > 0:
+      if not app.prefs.hasPath(parent, name):
+        app.prefs[parent, name] = data["default"]
+    else:
+      if name notin app.prefs:
+        app.prefs[name] = data["default"]
+
+proc validateDate*(input, format: string): tuple[success: bool, date: DateTime] = 
+  try:
+    result.date = input.parse(format)
+    result.success = true
+  except TimeParseError:
+    result.success = false
+
+proc newString*(lenght: int, default: string): string = 
+  result = newString(lenght)
+  result[0..default.high] = default
+
+proc cleanString*(str: string): string = 
+  if '\0' in str:
+    str[0..<str.find('\0')].strip()
+  else:
+    str.strip()

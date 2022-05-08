@@ -20,13 +20,6 @@ const
   """.dedent()
 let
   config = configPath.readPrefs()
-  resources = [
-    configPath, 
-    config["iconPath"].getString(), 
-    config["stylePath"].getString(), 
-    config["iconFontPath"].getString(),
-    config["fontPath"].getString()
-  ]
   name = config["name"].getString() 
   arch = if "arch" in config: config["arch"].getString() else: "x86_64"
 
@@ -49,27 +42,32 @@ task "build", "Build AppImage":
     ]
   )
   copyFile(config["svgIconPath"].getString(), "AppDir" / &"{name}.svg")
+  if "appstreamPath" in config:
+    createDir("AppDir/usr/share/metainfo")
+    copyFile(config["appstreamPath"].getString(), &"AppDir/usr/share/metainfo/{name}.appdata.xml")
 
-  var appimagetoolPath = "appimagetoola"
+  var appimagetoolPath = "appimagetool"
   if not silentShell("Checking for appimagetool", appimagetoolPath, "--help"):
-      appimagetoolPath = "./appimagetool-x86_64.AppImage"
-      if not fileExists(appimagetoolPath):
-        direSilentShell &"Dowloading {appimagetoolPath}", "wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O ", appimagetoolPath
-      shell "chmod +x", appimagetoolPath
+      withDir "AppDir":
+        appimagetoolPath = "../appimagetool-x86_64.AppImage"
+        if not fileExists(appimagetoolPath):
+          direSilentShell &"Dowloading {appimagetoolPath}", "wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O ", appimagetoolPath
+        shell "chmod +x", appimagetoolPath
 
-  if "ghRepo" in config:
-    echo "Building updateable AppImage"
-    let ghInfo = config["ghRepo"].getString().split('/')
-    direShell appimagetoolPath, "-u", &"\"gh-releases-zsync|{ghInfo[0]}|{ghInfo[1]}|latest|{name}-*.AppImage.zsync\"", ".", &"AppDir/{name}-{arch}.AppImage"
-  else:
-    echo &"ghRepo key not in {configPath}. Skipping updateable AppImage"
-    direShell appimagetoolPath, "."
+  withDir "AppDir":
+    if "ghRepo" in config:
+      echo "Building updateable AppImage"
+      let ghInfo = config["ghRepo"].getString().split('/')
+      direShell appimagetoolPath, "-u", &"\"gh-releases-zsync|{ghInfo[0]}|{ghInfo[1]}|latest|{name}-*.AppImage.zsync\"", CurDir, &"{name}-{arch}.AppImage"
+    else:
+      echo &"ghRepo key not in {configPath}. Skipping updateable AppImage"
+      direShell appimagetoolPath, CurDir
 
   echo "Succesfully built AppImage at AppDir/"
 
-task "run", "Build (if needed) and run AppImage":
+task "run", "Build and run AppImage":
   if "AppDir/AppRun".needsRefresh("main.nim"):
     runTask("build")
 
   shell "chmod a+x AppDir/*.AppImage" # Make it executable
-  shell "./AppDir/*.AppImage"
+  shell "AppDir/*.AppImage"

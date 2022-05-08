@@ -5,9 +5,10 @@ version="0.2.0"
 website="https://github.com/Patitotective/ImTemplate"
 authors=["Patitotective <https://github.com/Patitotective>", "Cristobal <mailto:cristobalriaga@gmail.com>", "Inu147"]
 categories=["Utility"]
-# Include it to generate an updateable AppImage
+
+# AppImage
 ghRepo="Patitotective/ImTemplate"
-arch="x86_64" # AppImage architecture
+arch="x86_64"
 
 stylePath="assets/style.niprefs"
 iconPath="assets/icon.png"
@@ -24,6 +25,14 @@ settings=>
   input=>
     type="input"
     default="Hello World"
+    max=100
+    flags="None" # See https://nimgl.dev/docs/imgui.html#ImGuiInputTextFlags
+    help="Help message"
+  hintInput=>
+    display="Input with hint"
+    hint="type something"
+    type="input"
+    default=""
     max=100
     flags="None" # See https://nimgl.dev/docs/imgui.html#ImGuiInputTextFlags
     help="Help message"

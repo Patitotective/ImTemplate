@@ -36,7 +36,7 @@ proc drawSetting(app: var App, name: string, data: PObjectType, alignCount: Natu
     var buffer = newString(data["max"].getInt())
     buffer[0..text.high] = text
 
-    if igInputText("##" & name, buffer, data["max"].getInt().uint, flags):
+    if igInputTextWithHint("##" & name, if "hint" in data: data["hint"].getString() else: "", buffer, data["max"].getInt().uint, flags):
       app.addToCache(name, buffer.newPString(), parent)
   of Check:
     var checked = app.getCacheVal(name, parent).getBool()
@@ -181,12 +181,9 @@ proc drawPrefsModal*(app: var App) =
         if alignCount > result: result = alignCount+margin
       else:
         if name.len > result: result = name.len+margin
-  var
-    center: ImVec2
-    # close: bool
+  var close = false
 
-  getCenterNonUDT(center.addr, igGetMainViewport())
-  igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))
+  igSetNextWindowPos(igGetMainViewport().getCenter(), Always, igVec2(0.5f, 0.5f))
 
   if igBeginPopupModal("Preferences", flags = makeFlags(AlwaysAutoResize, HorizontalScrollbar)):
     app.drawSettings(app.config["settings"], calcAlignCount(app.config["settings"]))
@@ -201,24 +198,23 @@ proc drawPrefsModal*(app: var App) =
     
     igSameLine()
 
-    #[
-    if igButton("Reset"):
-      igOpenPopup("Reset?")
-
-    igSameLine()
-    ]#
-
     if igButton("Cancel"):
       app.cache = default PObjectType
       igCloseCurrentPopup()
 
-    #[
+    igSameLine()
+
+    centerCursorX(igCalcTextSize("Reset").x, 1, igGetWindowPos().x) 
+    if igButton("Reset"):
+      igOpenPopup("Reset?")
+
     if igBeginPopupModal("Reset?", flags = makeFlags(AlwaysAutoResize)):
-      igText("Are you sure you want to reset the preferences?\nYou won't be able to undo this action")
+      igTextWrapped("Are you sure you want to reset the preferences?\nYou won't be able to undo this action")
       
       if igButton("Yes"):
         close = true
         app.prefs.overwrite()
+        app.initConfig(app.config["settings"])
         app.cache = default PObjectType
         igCloseCurrentPopup()
 
@@ -231,6 +227,5 @@ proc drawPrefsModal*(app: var App) =
 
     if close:
       igCloseCurrentPopup()
-    ]#
 
     igEndPopup()
