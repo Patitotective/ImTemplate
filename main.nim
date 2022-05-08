@@ -107,9 +107,7 @@ proc drawFlightBooker(app: var App) =
     igPopStyleColor()
 
   if app.currentFlight == 0: # Meaning one-way flight
-    igPushItemFlag(ImGuiItemFlags.Disabled, true)
-    igPushStyleVar(ImGuiStyleVar.Alpha, igGetStyle().alpha * 0.6)
-
+    igPushDisabled()
   if not app.returnDate.cleanString().validateDate("dd'.'mm'.'yyyy").success:
     returnDateRed = true
     igPushStyleColor(FrameBg, "#A8232D".parseHtmlColor().igVec4())
@@ -118,22 +116,19 @@ proc drawFlightBooker(app: var App) =
     igPopStyleColor()
 
   if app.currentFlight == 0: # Meaning one-way flight
-    igPopItemFlag()
-    igPopStyleVar()
+    igPopDisabled()
 
   if startDateRed or returnDateRed or 
     (app.currentFlight == 1 and (let (returnOK, returnDate) = app.returnDate.cleanString().validateDate("dd'.'mm'.'yyyy");
       let (startOk, startDate) = app.startDate.cleanString().validateDate("dd'.'mm'.'yyyy"); returnOk and startOk and returnDate < startDate)):
     bookDisabled = true
-    igPushItemFlag(ImGuiItemFlags.Disabled, true)
-    igPushStyleVar(ImGuiStyleVar.Alpha, igGetStyle().alpha * 0.6)
+    igPushDisabled()
 
   if igButton("Book"):
     igOpenPopup("###booked")
 
   if bookDisabled:
-    igPopItemFlag()
-    igPopStyleVar()
+    igPopDisabled()
 
   let unusedOpen = true
   igSetNextWindowPos(igGetMainViewport().getCenter(), Always, igVec2(0.5f, 0.5f))
@@ -168,12 +163,13 @@ proc drawTimer(app: var App) =
     app.curTime = igGetTime()
 
 proc drawCRUD(app: var App) = 
+  var btnsDisabled = false
   igBeginGroup()
   igInputTextWithHint("##filterPrefix", "Filter prefix", app.filterBuf, 64)
 
   if igBeginListBox("##namesList"):
     for e, (name, surname) in app.namesData:
-      if app.filterBuf.cleanString().len < 1 or surname.startsWith(app.filterBuf.cleanString()):
+      if app.filterBuf.cleanString().len == 0 or surname.toLowerAscii().startsWith(app.filterBuf.cleanString().toLowerAscii()):
         if igSelectable(&"{surname}, {name}", app.currentName == e):
           app.currentName = e
 
@@ -186,13 +182,47 @@ proc drawCRUD(app: var App) =
   igEndGroup()
 
   if igButton("Create"):
-    echo "create"
+    let (nameBuf, surnameBuf) = (app.nameBuf.cleanString(), app.surnameBuf.cleanString())
+    if nameBuf.len > 0 and surnameBuf.len > 0:
+      app.namesData.add (nameBuf, surnameBuf)
   igSameLine()
+
+  if app.currentName < 0:
+    btnsDisabled = true
+    igPushDisabled()
+
   if igButton("Update"):
-    echo "update"
+    let (nameBuf, surnameBuf) = (app.nameBuf.cleanString(), app.surnameBuf.cleanString())
+    if nameBuf.len > 0 and surnameBuf.len > 0:
+      app.namesData[app.currentName] = (nameBuf, surnameBuf)
   igSameLine()
   if igButton("Delete"):
     app.namesData.del(app.currentName)
+    app.currentName = -1
+
+  if btnsDisabled:
+    igPopDisabled()
+
+proc drawCircleDrawer(app: var App) = 
+  var canvas: ptr ImDrawList
+  if igButton("Undo"): echo "Undo"
+  igSameLine()
+  if igButton("Redo"): echo "Redo"
+
+  igPushStyleVar(WindowPadding, igVec2(0, 0))
+  igPushStyleColor(ChildBg, "#ffffff".parseHtmlColor().igVec4())
+  if igBeginChild("##canvas", igVec2(0, 0), true, makeFlags(NoMove)):
+    canvas = igGetWindowDrawList()
+    igPopStyleVar()
+    igPopStyleColor()
+    igEndChild()
+
+  if igIsItemClicked(ImGuiMouseButton.Left):
+    echo "Left clicked at ", igGetIO().mousePos
+    canvas.addCircle(igGetIO().mousePos, 10, igGetColorU32(BorderShadow))
+
+  if igIsItemClicked(ImGuiMouseButton.Right):
+    echo "Right clicked at ", igGetIO().mousePos
 
 proc drawBasic(app: var App) = 
   # Widgets/Basic/Button
@@ -391,24 +421,13 @@ proc drawMain(app: var App) = # Draw the main window
   if igBegin(app.config["name"].getString(), flags = makeFlags(ImGuiWindowFlags.NoResize, NoDecoration, NoMove)):
     igText(FA_Info & " Application average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
     if igBeginTabBar("tabs"): 
-      if igBeginTabItem("Counter"):
-        app.drawCounter()
-        igEndTabItem()
-      
-      if igBeginTabItem("Temperature Converter"):
-        app.drawTempConverter()
-        igEndTabItem()
-      
-      if igBeginTabItem("Flight Booker"):
-        app.drawFlightBooker()
-        igEndTabItem()
-
-      if igBeginTabItem("Timer"):
-        app.drawTimer()
-        igEndTabItem()
-
-      if igBeginTabItem("CRUD"):
-        app.drawCRUD()
+      if igBeginTabItem("7GUIs"):
+        if igCollapsingHeader("Counter"): app.drawCounter()
+        if igCollapsingHeader("Temperature Converter"): app.drawTempConverter()
+        if igCollapsingHeader("Flight Booker"): app.drawFlightBooker()
+        if igCollapsingHeader("Timer"): app.drawTimer()
+        if igCollapsingHeader("CRUD"): app.drawCRUD()
+        if igCollapsingHeader("Circle Drawer"): app.drawCircleDrawer()
         igEndTabItem()
 
       if igBeginTabItem("Basic"):
@@ -477,7 +496,8 @@ proc initApp(config: PObjectType): App =
     buffer: newString(128, "Hello, world!"), hintBuffer: newString(128), 
     celsius: newString(32), fahrenheit: newString(32), 
     startDate: newString(32, "03.03.2003"), returnDate: newString(32, "03.03.2003"), 
-    filterBuf: newString(64), nameBuf: newString(32), surnameBuf: newString(32), currentName: -1, namesData: @[("Elegant", "Beef"), ("Rika", "Nanakusa"), ("Omar", "Cornut")], 
+    filterBuf: newString(64), nameBuf: newString(32), surnameBuf: newString(32), currentName: -1, 
+    namesData: @[("Elegant", "Beef"), ("Rika", "Nanakusa"), ("Omar", "Cornut"), ("Armen", "Ghazaryan")], 
   )
   result.initPrefs()
   result.initConfig(result.config["settings"])

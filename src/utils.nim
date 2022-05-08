@@ -314,3 +314,11 @@ proc cleanString*(str: string): string =
     str[0..<str.find('\0')].strip()
   else:
     str.strip()
+
+proc igPushDisabled*() = 
+  igPushItemFlag(ImGuiItemFlags.Disabled, true)
+  igPushStyleVar(ImGuiStyleVar.Alpha, igGetStyle().alpha * 0.6)
+
+proc igPopDisabled*() = 
+  igPopItemFlag()
+  igPopStyleVar()
