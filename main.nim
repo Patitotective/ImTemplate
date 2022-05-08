@@ -167,6 +167,33 @@ proc drawTimer(app: var App) =
     app.startTime = igGetTime()
     app.curTime = igGetTime()
 
+proc drawCRUD(app: var App) = 
+  igBeginGroup()
+  igInputTextWithHint("##filterPrefix", "Filter prefix", app.filterBuf, 64)
+
+  if igBeginListBox("##namesList"):
+    for e, (name, surname) in app.namesData:
+      if app.filterBuf.cleanString().len < 1 or surname.startsWith(app.filterBuf.cleanString()):
+        if igSelectable(&"{surname}, {name}", app.currentName == e):
+          app.currentName = e
+
+    igEndListBox()
+
+  igEndGroup(); igSameLine()
+  igBeginGroup()
+  igInputTextWithHint("##name", "Name", app.nameBuf, 32)
+  igInputTextWithHint("##surname", "Surname", app.surnameBuf, 32)
+  igEndGroup()
+
+  if igButton("Create"):
+    echo "create"
+  igSameLine()
+  if igButton("Update"):
+    echo "update"
+  igSameLine()
+  if igButton("Delete"):
+    app.namesData.del(app.currentName)
+
 proc drawBasic(app: var App) = 
   # Widgets/Basic/Button
   if igButton("Button"):
@@ -380,6 +407,10 @@ proc drawMain(app: var App) = # Draw the main window
         app.drawTimer()
         igEndTabItem()
 
+      if igBeginTabItem("CRUD"):
+        app.drawCRUD()
+        igEndTabItem()
+
       if igBeginTabItem("Basic"):
         app.drawBasic()
         igEndTabItem()
@@ -446,6 +477,7 @@ proc initApp(config: PObjectType): App =
     buffer: newString(128, "Hello, world!"), hintBuffer: newString(128), 
     celsius: newString(32), fahrenheit: newString(32), 
     startDate: newString(32, "03.03.2003"), returnDate: newString(32, "03.03.2003"), 
+    filterBuf: newString(64), nameBuf: newString(32), surnameBuf: newString(32), currentName: -1, namesData: @[("Elegant", "Beef"), ("Rika", "Nanakusa"), ("Omar", "Cornut")], 
   )
   result.initPrefs()
   result.initConfig(result.config["settings"])

@@ -20,11 +20,20 @@ type
     config*: PObjectType # Prefs table
 
     # Variables
+    
+    # Counter
     counter*: int
+    # Temperature Converter
     celsius*, fahrenheit*: string
+    # Flight Booker
     currentFlight*: int
     startDate*, returnDate*: string
+    # Timer
     duration*, startTime*, curTime*: float32
+    # CRUD
+    filterBuf*, nameBuf*, surnameBuf*: string
+    currentName*: int
+    namesData*: seq[tuple[name, surname: string]]
 
     # Basic tab variables
     num*: int32
