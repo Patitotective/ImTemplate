@@ -38,8 +38,9 @@ jobs:
       - uses: iffy/install-nim@v4.1.1
       - name: Build and run .exe
         run: |
-          nimble install -d -y
-          nimble buildApp
+          echo $GITHUB_PATH
+          # nimble install -d -y
+          # nimble buildApp
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:
