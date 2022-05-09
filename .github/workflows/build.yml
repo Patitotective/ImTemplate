@@ -39,6 +39,7 @@ jobs:
       - name: Build and run .exe
         run: |
           echo $GITHUB_PATH
+          gcc -v
           # nimble install -d -y
           # nimble buildApp
       - name: Upload release binaries
