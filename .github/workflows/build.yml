@@ -38,8 +38,7 @@ jobs:
       - uses: iffy/install-nim@v4.1.1
       - name: Build and run .exe
         run: |
-          echo $GITHUB_PATH
-          gcc -v
+          echo %%PATH%%
           # nimble install -d -y
           # nimble buildApp
       - name: Upload release binaries
