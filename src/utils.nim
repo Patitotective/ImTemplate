@@ -12,6 +12,22 @@ type
   Element* = enum
     Fire, Earth, Air, Water
 
+  ActionKind* = enum
+    Resize, Create
+
+  Circle* = object
+    pos*: ImVec2
+    radius*: float32
+    hovered*: bool
+
+
+  Action* = ref object
+    pos*: ImVec2
+    case kind*: ActionKind
+    of Resize:
+      prevRadius*: float32
+    else: discard
+
   App* = ref object
     win*: GLFWWindow
     font*: ptr ImFont
@@ -34,6 +50,11 @@ type
     filterBuf*, nameBuf*, surnameBuf*: string
     currentName*: int
     namesData*: seq[tuple[name, surname: string]]
+    # Circle Drawer
+    actionsStack*: seq[Action]
+    diameter*: int32
+    currentCirc*, currentAction*: int
+    circlesList*: seq[Circle]
 
     # Basic tab variables
     num*: int32
@@ -67,6 +88,15 @@ type
     Section
 
   ImageData* = tuple[image: seq[byte], width, height: int]
+
+proc newCircle*(pos: ImVec2, radius: float32): Circle = 
+  Circle(pos: pos, radius: radius)
+
+proc newResizeAction*(pos: ImVec2, prevRadius: float32): Action = 
+  Action(pos: pos, kind: Resize, prevRadius: prevRadius)
+
+proc newCreateAction*(pos: ImVec2): Action = 
+  Action(pos: pos, kind: Create)
 
 # To be able to print large holey enums
 macro enumFullRange*(a: typed): untyped =

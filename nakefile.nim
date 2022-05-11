@@ -25,7 +25,6 @@ let
 
 task "build", "Build AppImage":
   shell "nimble install -d -y"
-  shell "nimble bundleData"
 
   discard existsOrCreateDir("AppDir")
   if "AppDir/AppRun".needsRefresh("main.nim"):

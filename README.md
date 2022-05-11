@@ -9,7 +9,7 @@ Template for making a single-windowed (or not) Dear ImGui application in Nim.
 - Preferences system (with preferences modal).
 - AppImage support (Linux).
 - Updateable AppImage support (with [gh-releases-zsync](https://github.com/AppImage/AppImageSpec/blob/master/draft.md#github-releases)).
-- Data resources support (using [nimassets](https://github.com/xmonader/nimassets))
+- Simple data resources support.
 - GitHub workflow for building and uploading the AppImage and exe to the last release.
 (To run NimGL in Linux you might need some libraries `sudo apt install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl-dev`)
 
@@ -17,6 +17,7 @@ Template for making a single-windowed (or not) Dear ImGui application in Nim.
 - `README.md`: Project's description.
 - `LICENSE`: Project's license.
 - `main.nim`: Application's logic.
+- `resourcesdata.nim`: To bundle data resources (see [Building](#building)).
 - `nakefile.md`: [Nakefile](https://github.com/fowlmouth/nake) to build the AppImage (see [Building](#building)).
 - `config.nims`: Nim compile configuration.
 - `config.niprefs`: Application's configuration (see [Config](#config)).
@@ -187,17 +188,18 @@ settings=>
 To access `alphaColor` you will need to do `app.prefs["colors/alphaColor"]`.
 
 ## Building
-Using `nimble buildApp` you can bundle the resources and compile the application.  
-Modify `resources` in the `.nimble` file and using [`nimassets`](https://github.com/xmonader/nimassets) it will bundle them in the binary.
+To bundle your app resources inside the compiled binary, you only need to go to `resourcesdata.nim` file and define their paths in `resources`. After that `resourcesdata` is imported in `main.nim`. Then you compile it, it statically reads those files and creates a table with `[path, data]`, to access them use `getData(path)`.
+[`resourcesdata.nim`](https://github.com/Patitotective/ImTemplate/blob/main/resourcesdata.nim)
 ```nim
-# Package
+..
+const resourcesPaths = [
+  configPath, 
+  config["iconPath"].getString(), 
+  config["stylePath"].getString(), 
+  config["fontPath"].getString(), 
+  config["iconFontPath"].getString()
+]
 ...
-# Dependencies
-...
-
-const resources = @["config.niprefs", "assets/icon.png", "assets/style.niprefs", "assets/ProggyVector Regular.ttf", "assets/forkawesome-webfont.ttf"]
-
-task bundleData, ...
 ```
 
 ### Nimble

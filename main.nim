@@ -1,7 +1,5 @@
-import std/[strutils, strformat, strscans, times, os]
+import std/[strutils, sequtils, strformat, strscans, times, os]
 
-when defined(release):
-  import assets
 import chroma
 import imstyle
 import niprefs
@@ -9,20 +7,19 @@ import nimgl/[opengl, glfw]
 import nimgl/imgui, nimgl/imgui/[impl_opengl, impl_glfw]
 
 import src/[utils, prefsmodal, icons]
+from resourcesdata import resources
 
 const configPath = "config.niprefs"
 
-proc getCacheDir(app: App): string = 
-  getCacheDir(app.config["name"].getString())
 
 proc getData(path: string): string = 
-  when defined(release):
-    path.getAsset()
-  else:
-    path.readFile()
+  resources[path]
 
 proc getData(node: PrefsNode): string = 
   node.getString().getData()
+
+proc getCacheDir(app: App): string = 
+  getCacheDir(app.config["name"].getString())
 
 proc drawAboutModal(app: App) = 
   var center: ImVec2
@@ -204,25 +201,92 @@ proc drawCRUD(app: var App) =
     igPopDisabled()
 
 proc drawCircleDrawer(app: var App) = 
-  var canvas: ptr ImDrawList
-  if igButton("Undo"): echo "Undo"
+  proc contains(circ: Circle, pos: ImVec2): bool =  ((circ.pos.x - pos.x) * (circ.pos.x - pos.x) + (circ.pos.y - pos.y) * (circ.pos.y - pos.y)) <= (circ.radius * circ.radius)
+  proc contains(list: seq[Circle], pos: ImVec2): bool = any(list, proc (circ: Circle): bool = pos in circ)
+
+  var openCirclePopup = false
+
+  if igButton("Undo"): 
+    if app.currentAction == -1: app.currentAction = app.actionsStack.high
+    echo app.currentAction
+    if app.currentAction > -1:
+      let action = app.actionsStack[app.currentAction]
+      case action.kind
+      of Create:
+        let circlesList = app.circlesList        
+
+        for e, circ in circlesList: 
+          echo circ.pos, " == ", action.pos
+          if circ.pos == action.pos:
+            echo circlesList
+            # app.circlesList.add circ
+            # echo circlesList
+      of Resize:
+        for e, circ in app.circlesList:
+          echo circ.pos, " == ", action.pos 
+          if circ.pos == action.pos: 
+            app.circlesList[e].radius = action.prevRadius
   igSameLine()
   if igButton("Redo"): echo "Redo"
 
   igPushStyleVar(WindowPadding, igVec2(0, 0))
   igPushStyleColor(ChildBg, "#ffffff".parseHtmlColor().igVec4())
-  if igBeginChild("##canvas", igVec2(0, 0), true, makeFlags(NoMove)):
-    canvas = igGetWindowDrawList()
+  if igBeginChild("##canvas", border = true, flags = makeFlags(NoMove)):
+    let canvas = igGetWindowDrawList()
+    for circle in app.circlesList:
+      if circle.hovered:
+        canvas.addCircleFilled(circle.pos, circle.radius, igGetColorU32(ScrollbarGrab))
+        canvas.addCircle(circle.pos, circle.radius, igGetColorU32(BorderShadow))
+      else:
+        canvas.addCircle(circle.pos, circle.radius, igGetColorU32(BorderShadow))
+
     igPopStyleVar()
     igPopStyleColor()
     igEndChild()
 
-  if igIsItemClicked(ImGuiMouseButton.Left):
-    echo "Left clicked at ", igGetIO().mousePos
-    canvas.addCircle(igGetIO().mousePos, 10, igGetColorU32(BorderShadow))
+    if igIsItemClicked(ImGuiMouseButton.Left):
+      if (let pos = igGetIO().mousePos; pos notin app.circlesList):
+        app.circlesList.add newCircle(pos, 20)
+        app.actionsStack.add newCreateAction(pos)
 
-  if igIsItemClicked(ImGuiMouseButton.Right):
-    echo "Right clicked at ", igGetIO().mousePos
+    if igIsItemHovered():
+      let pos = igGetIO().mousePos
+      var hovered = false
+      for e in countdown(app.circlesList.high, 0):
+        app.circlesList[e].hovered = not hovered and pos in app.circlesList[e]
+        if pos in app.circlesList[e]: hovered = true
+    else:
+      for circ in app.circlesList.mitems: circ.hovered = false
+
+    if igIsItemClicked(ImGuiMouseButton.Right):
+      let pos = igGetIO().mousePos
+      for e in countdown(app.circlesList.high, 0):
+        if pos in app.circlesList[e]:
+          app.diameter = (app.circlesList[e].radius * 2).int32
+          app.currentCirc = e
+          igOpenPopup("circlePopup")
+          break
+
+    if igBeginPopup("circlePopup"):
+      if igSelectable("Adjust Diameter"):
+        openCirclePopup = true
+      igEndPopup()
+
+    if openCirclePopup:
+      igOpenPopup("##adjustDiameter")
+
+    if igBeginPopupModal("##adjustDiameter", flags = makeFlags(ImGuiWindowFlags.NoResize)):
+      var prevRadius: float32
+      igText(&"Adjust the diameter of the circle at {app.circlesList[app.currentCirc].pos}")
+      if igSliderInt("##diameter", app.diameter.addr, 10, 80, format = ""):
+        prevRadius = app.circlesList[app.currentCirc].radius
+        app.circlesList[app.currentCirc].radius = app.diameter / 2        
+
+      if igButton("OK"):
+        app.actionsStack.add newResizeAction(app.circlesList[app.currentCirc].pos, prevRadius)
+        igCloseCurrentPopup()
+
+      igEndPopup()
 
 proc drawBasic(app: var App) = 
   # Widgets/Basic/Button
@@ -497,7 +561,8 @@ proc initApp(config: PObjectType): App =
     celsius: newString(32), fahrenheit: newString(32), 
     startDate: newString(32, "03.03.2003"), returnDate: newString(32, "03.03.2003"), 
     filterBuf: newString(64), nameBuf: newString(32), surnameBuf: newString(32), currentName: -1, 
-    namesData: @[("Elegant", "Beef"), ("Rika", "Nanakusa"), ("Omar", "Cornut"), ("Armen", "Ghazaryan")], 
+    namesData: @[("Elegant", "Beef"), ("Rika", "Nanakusa"), ("Omar", "Cornut"), ("Armen", "Ghazaryan"), ("Uncle", "Hmm")], 
+    currentCirc: -1, currentAction: -1, 
   )
   result.initPrefs()
   result.initConfig(result.config["settings"])
