@@ -560,6 +560,8 @@ proc initWindow(app: var App) =
     app.win.setWindowPos(app.prefs["win/x"].getInt().int32, app.prefs["win/y"].getInt().int32)
 
   app.win.makeContextCurrent()
+  # Enable vsync to limit the FPS
+  glfwSwapInterval(1)
 
 proc initPrefs(app: var App) = 
   app.prefs = toPrefs({
