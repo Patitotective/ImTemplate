@@ -143,8 +143,6 @@ proc drawTimer(app: var App) =
   if (app.curTime - app.startTime) < app.duration:
     app.curTime = igGetTime()
 
-  echo &"{app.startTime=} {app.curTime=} {app.duration=}"
-
   igText("Elapsed Time: "); igSameLine()
   igProgressBar(1 / (app.duration / (app.curTime - app.startTime)))
   
@@ -152,8 +150,8 @@ proc drawTimer(app: var App) =
   
   igText("Duration: "); igSameLine()
   if igSliderFloat("##slider", app.duration.addr, 0f, 15f, ""):
+    app.startTime = igGetTime() - (app.curTime - app.startTime)
     app.curTime = igGetTime()
-    app.startTime = igGetTime() - app.startTime
 
   if igButton("Reset"):
     app.startTime = igGetTime()
