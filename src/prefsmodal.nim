@@ -24,7 +24,7 @@ proc drawSetting(app: var App, name: string, data: PObjectType, alignCount: Natu
     settingType = parseEnum[SettingTypes](data["type"])
     label = if "display" in data: data["display"].getString() else: name.capitalizeAscii()
   if settingType != Section:
-    igText((label & ": ").alignLeft(alignCount))
+    igText(cstring (label & ": ").alignLeft(alignCount))
     igSameLine()
 
   case settingType:
@@ -36,22 +36,22 @@ proc drawSetting(app: var App, name: string, data: PObjectType, alignCount: Natu
     var buffer = newString(data["max"].getInt())
     buffer[0..text.high] = text
 
-    if igInputTextWithHint("##" & name, if "hint" in data: data["hint"].getString() else: "", buffer, data["max"].getInt().uint, flags):
+    if igInputTextWithHint(cstring "##" & name, if "hint" in data: data["hint"].getString().cstring else: "".cstring, buffer.cstring, data["max"].getInt().uint, flags):
       app.addToCache(name, buffer.newPString(), parent)
   of Check:
     var checked = app.getCacheVal(name, parent).getBool()
-    if igCheckbox("##" & name, checked.addr):
+    if igCheckbox(cstring "##" & name, checked.addr):
       app.addToCache(name, checked.newPBool(), parent)
   of Slider:
     let flags = getFlags[ImGuiSliderFlags](data["flags"])
     var val = app.getCacheVal(name, parent).getInt().int32
     
     if igSliderInt(
-      "##" & name, 
+      cstring "##" & name, 
       val.addr, 
       data["min"].getInt().int32, 
       data["max"].getInt().int32, 
-      data["format"].getString(), 
+      cstring data["format"].getString(), 
       flags
     ):
       app.addToCache(name, val.newPInt(), parent)
@@ -60,11 +60,11 @@ proc drawSetting(app: var App, name: string, data: PObjectType, alignCount: Natu
     var val: float32 = app.getCacheVal(name, parent).getFloat()
     
     if igSliderFloat(
-      "##" & name, 
+      cstring "##" & name, 
       val.addr, 
       data["min"].getFloat(), 
       data["max"].getFloat(), 
-      data["format"].getString(), 
+      cstring data["format"].getString(), 
       flags
     ):
       app.addToCache(name, val.newPFloat(), parent)
@@ -73,7 +73,7 @@ proc drawSetting(app: var App, name: string, data: PObjectType, alignCount: Natu
     var val = app.getCacheVal(name, parent).getInt().int32
     
     if igInputInt(
-      "##" & name, 
+      cstring "##" & name, 
       val.addr, 
       data["step"].getInt().int32, 
       data["step_fast"].getInt().int32, 
@@ -85,11 +85,11 @@ proc drawSetting(app: var App, name: string, data: PObjectType, alignCount: Natu
     var val = app.getCacheVal(name, parent).getFloat().float32
     
     if igInputFloat(
-      "##" & name, 
+      cstring "##" & name, 
       val.addr, 
       data["step"].getFloat(), 
       data["step_fast"].getFloat(), 
-      data["format"].getString(),
+      data["format"].getString().cstring,
       flags
     ):
       app.addToCache(name, val.newPFloat(), parent)
@@ -100,11 +100,11 @@ proc drawSetting(app: var App, name: string, data: PObjectType, alignCount: Natu
     if currentItem.kind == PInt:
       currentItem = data["items"][currentItem.getInt()]
 
-    if igBeginCombo("##" & name, currentItem.getString(), flags):
+    if igBeginCombo(cstring "##" & name, currentItem.getString().cstring, flags):
 
       for i in data["items"].getSeq():
         let selected = currentItem == i
-        if igSelectable(i.getString(), selected):
+        if igSelectable(i.getString().cstring, selected):
           app.addToCache(name, i, parent)
 
         if selected:
@@ -120,7 +120,7 @@ proc drawSetting(app: var App, name: string, data: PObjectType, alignCount: Natu
       currentItem = app.getCacheVal(name, parent).getInt().int32
 
     for e, i in data["items"].getSeq():
-      if igRadioButton(i.getString(), currentItem.addr, e.int32):
+      if igRadioButton(i.getString().cstring, currentItem.addr, e.int32):
         app.addToCache(name, i, parent)
       
       if e < data["items"].getSeq().high:
@@ -129,7 +129,7 @@ proc drawSetting(app: var App, name: string, data: PObjectType, alignCount: Natu
     let flags = getFlags[ImGuiColorEditFlags](data["flags"])
     var col = app.getCacheVal(name, parent).parseColor3()
 
-    if igColorEdit3("##" & name, col, flags):
+    if igColorEdit3(cstring "##" & name, col, flags):
       var color = newPSeq()
       color.add col[0].newPFloat()
       color.add col[1].newPFloat()
@@ -139,7 +139,7 @@ proc drawSetting(app: var App, name: string, data: PObjectType, alignCount: Natu
     let flags = getFlags[ImGuiColorEditFlags](data["flags"])
     var col = app.getCacheVal(name, parent).parseColor4()
     
-    if igColorEdit4("##" & name, col, flags):
+    if igColorEdit4(cstring "##" & name, col, flags):
       var color = newPSeq()
       color.add col[0].newPFloat()
       color.add col[1].newPFloat()
@@ -148,7 +148,7 @@ proc drawSetting(app: var App, name: string, data: PObjectType, alignCount: Natu
       app.addToCache(name, color, parent)
   of Section:
     let flags = getFlags[ImGuiTreeNodeFlags](data["flags"])
-    if igCollapsingHeader(label, flags):
+    if igCollapsingHeader(label.cstring, flags):
       if parent.len > 0:
         app.drawSettings(data["content"], alignCount, parent & "/" & name)
       else:

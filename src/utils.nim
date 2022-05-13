@@ -292,7 +292,7 @@ proc igTextURL*(name: string, url: string, sameLineBefore, sameLineAfter: bool =
       url.openURL()
 
     igAddUnderLine(igGetColorU32(CheckMark))
-    igSetTooltip(url & " " & FA_ExternalLink)
+    igSetTooltip(cstring url & " " & FA_ExternalLink)
 
   if sameLineAfter: igSameLine(0f, style.itemInnerSpacing.x)
 

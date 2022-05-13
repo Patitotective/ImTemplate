@@ -27,7 +27,7 @@ proc drawAboutModal(app: App) =
   igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))
 
   let unusedOpen = true
-  if igBeginPopupModal("About " & app.config["name"].getString(), unusedOpen.unsafeAddr, flags = makeFlags(ImGuiWindowFlags.NoResize)):
+  if igBeginPopupModal(cstring "About " & app.config["name"].getString(), unusedOpen.unsafeAddr, flags = makeFlags(ImGuiWindowFlags.NoResize)):
 
     # Display icon image
     var
@@ -41,12 +41,12 @@ proc drawAboutModal(app: App) =
       if igIsMouseClicked(ImGuiMouseButton.Left):
         app.config["website"].getString().openURL()
 
-      igSetTooltip(app.config["website"].getString() & " " & FA_ExternalLink)
+      igSetTooltip(cstring app.config["website"].getString() & " " & FA_ExternalLink)
 
     igSameLine()
     
     igPushTextWrapPos(250)
-    igTextWrapped(app.config["comment"].getString())
+    igTextWrapped(app.config["comment"].getString().cstring)
     igPopTextWrapPos()
 
     igSpacing()
@@ -58,39 +58,39 @@ proc drawAboutModal(app: App) =
           let (name,  url) = author.getString().removeInside('<', '>')
           (name.strip(),  url.strip())
 
-        if igSelectable(name) and url.len > 0:
+        if igSelectable(name.cstring) and url.len > 0:
             url.openURL()
         if igIsItemHovered() and url.len > 0:
-          igSetTooltip(url & " " & FA_ExternalLink)
+          igSetTooltip(cstring url & " " & FA_ExternalLink)
       igEndChild()
 
-    igText(app.config["version"].getString())
+    igText(app.config["version"].getString().cstring)
 
     igEndPopup()
 
 proc drawCounter(app: var App) = 
-  igText($app.counter)
+  igText(cstring $app.counter)
   igSameLine()
 
   if igButton("Count " & FA_HandPointerO):
     inc app.counter
 
 proc drawTempConverter(app: var App) = 
-  if igInputText("Celsius", app.celsius, 32):
+  if igInputText("Celsius", app.celsius.cstring, 32):
     if (let (valid, val) = scanTuple(app.celsius.cleanString(), "$i$."); valid):
       let fahr = $(val.float * (9 / 5) + 32)
       app.fahrenheit[0..app.fahrenheit.high] = fahr
   
-  if igInputText("Fahrenheit", app.fahrenheit, 32):
+  if igInputText("Fahrenheit", app.fahrenheit.cstring, 32):
     if (let (valid, val) = scanTuple(app.fahrenheit.cleanString(), "$i$."); valid):
       let cels = $((val - 32).float * (5 / 9))
       app.celsius[0..app.celsius.high] = cels
 
 proc drawFlightBooker(app: var App) = 
   const flights = ["one-way flight", "return flight"]
-  if igBeginCombo("##flight", flights[app.currentFlight]):
+  if igBeginCombo("##flight", flights[app.currentFlight].cstring):
     for e, item in flights:
-      if igSelectable(item, app.currentFlight == e):
+      if igSelectable(item.cstring, app.currentFlight == e):
         app.currentFlight = e
     igEndCombo()
 
@@ -99,7 +99,7 @@ proc drawFlightBooker(app: var App) =
   if not app.startDate.cleanString().validateDate("dd'.'mm'.'yyyy").success:
     startDateRed = true
     igPushStyleColor(FrameBg, "#A8232D".parseHtmlColor().igVec4())
-  igInputText("Departure date", app.startDate, 32)
+  igInputText("Departure date", app.startDate.cstring, 32)
   if startDateRed:
     igPopStyleColor()
 
@@ -108,7 +108,7 @@ proc drawFlightBooker(app: var App) =
   if not app.returnDate.cleanString().validateDate("dd'.'mm'.'yyyy").success:
     returnDateRed = true
     igPushStyleColor(FrameBg, "#A8232D".parseHtmlColor().igVec4())
-  igInputText("Return date", app.returnDate, 32)
+  igInputText("Return date", app.returnDate.cstring, 32)
   if returnDateRed:
     igPopStyleColor()
 
@@ -132,9 +132,9 @@ proc drawFlightBooker(app: var App) =
   if igBeginPopupModal("Succesfully Booked###booked", unusedOpen.unsafeAddr, flags = makeFlags(ImGuiWindowFlags.NoResize, NoMove)):
     igPushTextWrapPos(250)
     if app.currentFlight == 0: # one-way flight
-      igTextWrapped(&"You have booked a one-way flight on {app.startDate}")
+      igTextWrapped(cstring &"You have booked a one-way flight on {app.startDate}")
     elif app.currentFlight == 1: # return flight
-      igTextWrapped(&"You have booked a one-way flight departing on {app.startDate} and {app.returnDate}")
+      igTextWrapped(cstring &"You have booked a one-way flight departing on {app.startDate} and {app.returnDate}")
     igPopTextWrapPos()
 
     igEndPopup()
@@ -160,20 +160,20 @@ proc drawTimer(app: var App) =
 proc drawCRUD(app: var App) = 
   var btnsDisabled = false
   igBeginGroup()
-  igInputTextWithHint("##filterPrefix", "Filter prefix", app.filterBuf, 64)
+  igInputTextWithHint("##filterPrefix", "Filter prefix", app.filterBuf.cstring, 64)
 
   if igBeginListBox("##namesList"):
     for e, (name, surname) in app.namesData:
       if app.filterBuf.cleanString().len == 0 or surname.toLowerAscii().startsWith(app.filterBuf.cleanString().toLowerAscii()):
-        if igSelectable(&"{surname}, {name}", app.currentName == e):
+        if igSelectable(cstring &"{surname}, {name}", app.currentName == e):
           app.currentName = e
 
     igEndListBox()
 
   igEndGroup(); igSameLine()
   igBeginGroup()
-  igInputTextWithHint("##name", "Name", app.nameBuf, 32)
-  igInputTextWithHint("##surname", "Surname", app.surnameBuf, 32)
+  igInputTextWithHint("##name", "Name", app.nameBuf.cstring, 32)
+  igInputTextWithHint("##surname", "Surname", app.surnameBuf.cstring, 32)
   igEndGroup()
 
   if igButton("Create"):
@@ -202,34 +202,68 @@ proc drawCircleDrawer(app: var App) =
   proc contains(circ: Circle, pos: ImVec2): bool =  ((circ.pos.x - pos.x) * (circ.pos.x - pos.x) + (circ.pos.y - pos.y) * (circ.pos.y - pos.y)) <= (circ.radius * circ.radius)
   proc contains(list: seq[Circle], pos: ImVec2): bool = any(list, proc (circ: Circle): bool = pos in circ)
 
-  var openCirclePopup = false
+  var openCirclePopup, undoDisabled, redoDisabled = false
+
+  if app.currentAction == 0 or app.actionsStack.len == 0:
+    undoDisabled = true
+    igPushDisabled()
 
   if igButton("Undo"): 
     if app.currentAction == -1: app.currentAction = app.actionsStack.high
-    echo app.currentAction
+
     if app.currentAction > -1:
       let action = app.actionsStack[app.currentAction]
       case action.kind
       of Create:
-        let circlesList = app.circlesList        
-
-        for e, circ in circlesList: 
-          echo circ.pos, " == ", action.pos
-          if circ.pos == action.pos:
-            echo circlesList
-            # app.circlesList.add circ
-            # echo circlesList
+        for e in 0..app.circlesList.high: 
+          if app.circlesList[e].pos == action.pos:
+            app.circlesList.del(e)
+            # app.actionsStack.del(app.currentAction)
+            dec app.currentAction
+            break
       of Resize:
-        for e, circ in app.circlesList:
-          echo circ.pos, " == ", action.pos 
-          if circ.pos == action.pos: 
+        for e in 0..app.circlesList.high:
+          if app.circlesList[e].pos == action.pos: 
             app.circlesList[e].radius = action.prevRadius
+            # app.actionsStack.del(app.currentAction)
+            dec app.currentAction
+            break
+  if undoDisabled:
+    igPopDisabled()
+
   igSameLine()
-  if igButton("Redo"): echo "Redo"
+
+  if app.currentAction == app.actionsStack.high:
+    redoDisabled = true
+    igPushDisabled()
+  if igButton("Redo"):
+    echo app.currentAction
+    echo app.actionsStack.repr
+    if app.currentAction == -1: app.currentAction = app.actionsStack.high
+
+    if app.currentAction > -1:
+      let action = app.actionsStack[app.currentAction]
+      case action.kind
+      of Create:
+        for e in 0..app.circlesList.high: 
+          if app.circlesList[e].pos == action.pos:
+            app.circlesList.del(e)
+            # app.actionsStack.del(app.currentAction)
+            dec app.currentAction
+            break
+      of Resize:
+        for e in 0..app.circlesList.high:
+          if app.circlesList[e].pos == action.pos: 
+            app.circlesList[e].radius = action.prevRadius
+            # app.actionsStack.del(app.currentAction)
+            dec app.currentAction
+            break
+  if redoDisabled:
+    igPopDisabled()
 
   igPushStyleVar(WindowPadding, igVec2(0, 0))
   igPushStyleColor(ChildBg, "#ffffff".parseHtmlColor().igVec4())
-  if igBeginChild("##canvas", border = true, flags = makeFlags(NoMove)):
+  if igBeginChild("##canvas", igVec2(0, 200), border = true, flags = makeFlags(NoMove)):
     let canvas = igGetWindowDrawList()
     for circle in app.circlesList:
       if circle.hovered:
@@ -238,53 +272,53 @@ proc drawCircleDrawer(app: var App) =
       else:
         canvas.addCircle(circle.pos, circle.radius, igGetColorU32(BorderShadow))
 
-    igPopStyleVar()
-    igPopStyleColor()
-    igEndChild()
+  igPopStyleVar()
+  igPopStyleColor()
+  igEndChild()
 
-    if igIsItemClicked(ImGuiMouseButton.Left):
-      if (let pos = igGetIO().mousePos; pos notin app.circlesList):
-        app.circlesList.add newCircle(pos, 20)
-        app.actionsStack.add newCreateAction(pos)
+  if igIsItemClicked(ImGuiMouseButton.Left):
+    if (let pos = igGetIO().mousePos; pos notin app.circlesList):
+      app.circlesList.add newCircle(pos, 20)
+      app.actionsStack.add newCreateAction(pos)
 
-    if igIsItemHovered():
-      let pos = igGetIO().mousePos
-      var hovered = false
-      for e in countdown(app.circlesList.high, 0):
-        app.circlesList[e].hovered = not hovered and pos in app.circlesList[e]
-        if pos in app.circlesList[e]: hovered = true
-    else:
-      for circ in app.circlesList.mitems: circ.hovered = false
+  if igIsItemHovered():
+    let pos = igGetIO().mousePos
+    var hovered = false
+    for e in countdown(app.circlesList.high, 0):
+      app.circlesList[e].hovered = not hovered and pos in app.circlesList[e]
+      if pos in app.circlesList[e]: hovered = true
+  else:
+    for circ in app.circlesList.mitems: circ.hovered = false
 
-    if igIsItemClicked(ImGuiMouseButton.Right):
-      let pos = igGetIO().mousePos
-      for e in countdown(app.circlesList.high, 0):
-        if pos in app.circlesList[e]:
-          app.diameter = (app.circlesList[e].radius * 2).int32
-          app.currentCirc = e
-          igOpenPopup("circlePopup")
-          break
+  if igIsItemClicked(ImGuiMouseButton.Right):
+    let pos = igGetIO().mousePos
+    for e in countdown(app.circlesList.high, 0):
+      if pos in app.circlesList[e]:
+        app.diameter = (app.circlesList[e].radius * 2).int32
+        app.currentCirc = e
+        igOpenPopup("circlePopup")
+        break
 
-    if igBeginPopup("circlePopup"):
-      if igSelectable("Adjust Diameter"):
-        openCirclePopup = true
-      igEndPopup()
+  if igBeginPopup("circlePopup"):
+    if igSelectable("Adjust Diameter"):
+      openCirclePopup = true
+    igEndPopup()
 
-    if openCirclePopup:
-      igOpenPopup("##adjustDiameter")
+  if openCirclePopup:
+    app.actionsStack.add newResizeAction(app.circlesList[app.currentCirc].pos, app.circlesList[app.currentCirc].radius)
+    igOpenPopup("##adjustDiameter")
 
-    if igBeginPopupModal("##adjustDiameter", flags = makeFlags(ImGuiWindowFlags.NoResize)):
-      var prevRadius: float32
-      igText(&"Adjust the diameter of the circle at {app.circlesList[app.currentCirc].pos}")
-      if igSliderInt("##diameter", app.diameter.addr, 10, 80, format = ""):
-        prevRadius = app.circlesList[app.currentCirc].radius
-        app.circlesList[app.currentCirc].radius = app.diameter / 2        
+  if igBeginPopupModal("##adjustDiameter", flags = makeFlags(ImGuiWindowFlags.NoResize)):
+    igText(cstring &"Adjust the diameter of the circle at {app.circlesList[app.currentCirc].pos}")
+    if igSliderInt("##diameter", app.diameter.addr, 10, 70, format = ""):
+      app.circlesList[app.currentCirc].radius = app.diameter / 2        
 
-      if igButton("OK"):
-        app.actionsStack.add newResizeAction(app.circlesList[app.currentCirc].pos, prevRadius)
-        igCloseCurrentPopup()
+    if igButton("OK"):
+      if app.actionsStack[^1].prevRadius == app.circlesList[app.currentCirc].radius:
+        app.actionsStack.del(app.actionsStack.high)
+      igCloseCurrentPopup()
 
-      igEndPopup()
+    igEndPopup()
 
 proc drawBasic(app: var App) = 
   # Widgets/Basic/Button
@@ -333,7 +367,7 @@ proc drawBasic(app: var App) =
   igPopButtonRepeat()
   
   igSameLine()
-  igText($app.basicCounter)
+  igText(cstring $app.basicCounter)
 
   # Widgets/Basic/Tooltips
   igText("Hover over me")
@@ -347,9 +381,9 @@ proc drawBasic(app: var App) =
   # See "Combo" section for examples of how to use the more flexible BeginCombo()/EndCombo() api.
   # Widgets/Basic/Combo
   const comboItems = ["AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG", "HHHH", "IIIIIII", "JJJJ", "KKKKKKK"]
-  if igBeginCombo("combo", comboItems[app.comboCurrent]):
+  if igBeginCombo("combo", comboItems[app.comboCurrent].cstring):
     for e, i in comboItems:
-      if igSelectable(i, e == app.comboCurrent):
+      if igSelectable(i.cstring, e == app.comboCurrent):
         app.comboCurrent = e
 
     igEndCombo()
@@ -357,7 +391,7 @@ proc drawBasic(app: var App) =
   # To wire InputText() with std::string or any other custom string type,
   # see the "Text Input > Resize Callback" section of this demo, and the misc/cpp/imgui_stdlib.h file.
   # Widgets/Basic/InputText
-  igInputText("input text", app.buffer, 128)
+  igInputText("input text", app.buffer.cstring, 128)
   igSameLine(); igHelpMarker("""
   USER:
   Hold SHIFT or use mouse to select text.
@@ -371,7 +405,7 @@ proc drawBasic(app: var App) =
   You can use the ImGuiInputTextFlags_CallbackResize facility if you need to wire InputText() to a dynamic string type. See misc/cpp/imgui_stdlib.h for an example (this is not demonstrated in imgui_demo.cpp).
   """)
 
-  igInputTextWithHint("input text (w/ hint)", "enter text here", app.hintBuffer, 128)
+  igInputTextWithHint("input text (w/ hint)", "enter text here", app.hintBuffer.cstring, 128)
 
   # Widgets/Basic/InputInt, InputFloat
   igInputInt("input int", app.num.addr)
@@ -409,7 +443,7 @@ proc drawBasic(app: var App) =
   # This technique can also be used with DragInt().
   # Widgets/Basic/Slider (enum)
   var elem = app.elem.int32
-  if igSliderInt("slider enum", elem.addr, 0, Element.high.int32, $app.elem): app.elem = elem.Element
+  if igSliderInt("slider enum", elem.addr, 0, Element.high.int32, cstring $app.elem): app.elem = elem.Element
   igSameLine(); igHelpMarker("Using the format string parameter to display a name instead of the underlying integer.")
 
   # Widgets/Basic/ColorEdit3, ColorEdit4
@@ -428,7 +462,7 @@ proc drawBasic(app: var App) =
   # Widgets/Basic/ListBox
   if igBeginListBox("listbox"):
     for e, i in ["Apple", "Banana", "Cherry", "Kiwi", "Mango", "Orange", "Pineapple", "Strawberry", "Watermelon"]:
-      if igSelectable(i, e == app.listCurrent):
+      if igSelectable(i.cstring, e == app.listCurrent):
         app.listCurrent = e
 
       if e == app.listCurrent:
@@ -456,7 +490,7 @@ proc drawMainMenuBar(app: var App) =
       if igMenuItem("Website " & FA_ExternalLink):
         app.config["website"].getString().openURL()
 
-      igMenuItem("About " & app.config["name"].getString(), shortcut = nil, p_selected = openAbout.addr)
+      igMenuItem(cstring "About " & app.config["name"].getString(), shortcut = nil, p_selected = openAbout.addr)
 
       igEndMenu() 
 
@@ -466,7 +500,7 @@ proc drawMainMenuBar(app: var App) =
   if openPrefs:
     igOpenPopup("Preferences")
   if openAbout:
-    igOpenPopup("About " & app.config["name"].getString())
+    igOpenPopup(cstring "About " & app.config["name"].getString())
 
   # These modals will only get drawn when igOpenPopup(name) are called, respectly
   app.drawAboutModal()
@@ -480,7 +514,7 @@ proc drawMain(app: var App) = # Draw the main window
   igSetNextWindowPos(viewport.workPos)
   igSetNextWindowSize(viewport.workSize)
 
-  if igBegin(app.config["name"].getString(), flags = makeFlags(ImGuiWindowFlags.NoResize, NoDecoration, NoMove)):
+  if igBegin(app.config["name"].getString().cstring, flags = makeFlags(ImGuiWindowFlags.NoResize, NoDecoration, NoMove)):
     igText(FA_Info & " Application average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
     if igBeginTabBar("tabs"): 
       if igBeginTabItem("7GUIs"):
@@ -498,7 +532,7 @@ proc drawMain(app: var App) = # Draw the main window
       
       igEndTabBar()
 
-    igEnd()
+  igEnd()
 
 proc display(app: var App) = # Called in the main loop
   glfwPollEvents()
@@ -527,7 +561,7 @@ proc initWindow(app: var App) =
   app.win = glfwCreateWindow(
     app.prefs["win/width"].getInt().int32, 
     app.prefs["win/height"].getInt().int32, 
-    app.config["name"].getString(), 
+    app.config["name"].getString().cstring, 
     icon = false # Do not use default icon
   )
 
