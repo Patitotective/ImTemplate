@@ -152,8 +152,8 @@ proc drawTimer(app: var App) =
   
   igText("Duration: "); igSameLine()
   if igSliderFloat("##slider", app.duration.addr, 0f, 15f, ""):
-    app.curTime = (app.curTime - app.startTime) + igGetTime()
-    app.startTime = igGetTime()
+    app.curTime = igGetTime()
+    app.startTime = igGetTime() - app.startTime
 
   if igButton("Reset"):
     app.startTime = igGetTime()
@@ -541,15 +541,32 @@ proc initWindow(app: var App) =
   app.win.setWindowIcon(1, icon.addr)
 
   app.win.setWindowSizeLimits(app.config["minSize"][0].getInt().int32, app.config["minSize"][1].getInt().int32, GLFW_DONT_CARE, GLFW_DONT_CARE) # minWidth, minHeight, maxWidth, maxHeight
-  app.win.setWindowPos(app.prefs["win/x"].getInt().int32, app.prefs["win/y"].getInt().int32)
+
+  # If negative pos "center" the window on the monitor
+  if app.prefs["win/x"].getInt() < 0 or app.prefs["win/y"].getInt() < 0:
+    var monitorX, monitorY, count: int32
+    let
+      monitors = glfwGetMonitors(count.addr)
+      videoMode = monitors[0].getVideoMode()
+      windowWidth = videoMode.width.float / 1.5
+      windowHeight = windowWidth / 16 * 9
+ 
+    monitors[0].getMonitorPos(monitorX.addr, monitorY.addr)
+    app.win.setWindowPos(
+      int32(monitorX.float + (videoMode.width.float - windowWidth) / 2), 
+      int32(monitorY.float + (videoMode.height.float - windowHeight) / 2)
+    )
+  else:
+    app.win.setWindowPos(app.prefs["win/x"].getInt().int32, app.prefs["win/y"].getInt().int32)
 
   app.win.makeContextCurrent()
 
 proc initPrefs(app: var App) = 
   app.prefs = toPrefs({
     win: {
-      x: 0,
-      y: 0,
+      # Negative numbers center the window
+      x: -1,
+      y: -1,
       width: 500,
       height: 500
     }
