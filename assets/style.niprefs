@@ -21,7 +21,7 @@ frameBorderSize=0
 itemSpacing=[7, 4]
 itemInnerSpacing=[3, 2]
 
-cellPadding=[4, 2]
+cellPadding=[0, 0]
 
 touchExtraPadding=[0, 0]
 
@@ -106,7 +106,7 @@ colors=>
   TableBorderLight = "#3A3A3F"
   TableRowBg = "#000000"
   TableRowBgAlt = "#FFFFFF"
-  TextSelectedBg = "#74324C"
+  TextSelectedBg = "#62A0EA"
   DragDropTarget = "#FFFF00"
   NavHighlight = "#4296F9"
   NavWindowingHighlight = "#FFFFFF"

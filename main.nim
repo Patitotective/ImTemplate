@@ -6,14 +6,21 @@ import niprefs
 import nimgl/[opengl, glfw]
 import nimgl/imgui, nimgl/imgui/[impl_opengl, impl_glfw]
 
-import src/[utils, prefsmodal, icons]
-from resourcesdata import resources
+import src/[spreadsheet, prefsmodal, utils, icons]
+when defined(release):
+  from resourcesdata import resources
 
-const configPath = "config.niprefs"
+const
+  framerate = 30
+  configPath = "config.niprefs"
 
+var lastTime: float64
 
 proc getData(path: string): string = 
-  resources[path]
+  when defined(release):
+    resources[path]
+  else:
+    readFile(path)
 
 proc getData(node: PrefsNode): string = 
   node.getString().getData()
@@ -204,13 +211,11 @@ proc drawCircleDrawer(app: var App) =
 
   var openCirclePopup, undoDisabled, redoDisabled = false
 
-  if app.currentAction == 0 or app.actionsStack.len == 0:
+  if app.currentAction == -1 or app.actionsStack.len == 0:
     undoDisabled = true
     igPushDisabled()
 
   if igButton("Undo"): 
-    if app.currentAction == -1: app.currentAction = app.actionsStack.high
-
     if app.currentAction > -1:
       let action = app.actionsStack[app.currentAction]
       case action.kind
@@ -218,14 +223,13 @@ proc drawCircleDrawer(app: var App) =
         for e in 0..app.circlesList.high: 
           if app.circlesList[e].pos == action.pos:
             app.circlesList.del(e)
-            # app.actionsStack.del(app.currentAction)
             dec app.currentAction
             break
       of Resize:
         for e in 0..app.circlesList.high:
           if app.circlesList[e].pos == action.pos: 
-            app.circlesList[e].radius = action.prevRadius
-            # app.actionsStack.del(app.currentAction)
+            app.actionsStack[app.currentAction].radius = app.circlesList[e].radius
+            app.circlesList[e].radius = action.radius
             dec app.currentAction
             break
   if undoDisabled:
@@ -233,37 +237,28 @@ proc drawCircleDrawer(app: var App) =
 
   igSameLine()
 
-  if app.currentAction == app.actionsStack.high:
+  if app.currentAction + 1 > app.actionsStack.high:
     redoDisabled = true
     igPushDisabled()
   if igButton("Redo"):
-    echo app.currentAction
-    echo app.actionsStack.repr
-    if app.currentAction == -1: app.currentAction = app.actionsStack.high
-
+    inc app.currentAction
     if app.currentAction > -1:
       let action = app.actionsStack[app.currentAction]
       case action.kind
       of Create:
-        for e in 0..app.circlesList.high: 
-          if app.circlesList[e].pos == action.pos:
-            app.circlesList.del(e)
-            # app.actionsStack.del(app.currentAction)
-            dec app.currentAction
-            break
+        app.circlesList.add newCircle(action.pos, action.radius)
       of Resize:
         for e in 0..app.circlesList.high:
           if app.circlesList[e].pos == action.pos: 
-            app.circlesList[e].radius = action.prevRadius
-            # app.actionsStack.del(app.currentAction)
-            dec app.currentAction
-            break
+            app.actionsStack[app.currentAction].radius = app.circlesList[e].radius
+            app.circlesList[e].radius = action.radius
+
   if redoDisabled:
     igPopDisabled()
 
   igPushStyleVar(WindowPadding, igVec2(0, 0))
   igPushStyleColor(ChildBg, "#ffffff".parseHtmlColor().igVec4())
-  if igBeginChild("##canvas", igVec2(0, 200), border = true, flags = makeFlags(NoMove)):
+  if igBeginChild("##canvas", igVec2(0, 250), border = true, flags = makeFlags(NoMove)):
     let canvas = igGetWindowDrawList()
     for circle in app.circlesList:
       if circle.hovered:
@@ -278,8 +273,12 @@ proc drawCircleDrawer(app: var App) =
 
   if igIsItemClicked(ImGuiMouseButton.Left):
     if (let pos = igGetIO().mousePos; pos notin app.circlesList):
+      if app.currentAction != app.actionsStack.high:
+        app.actionsStack.delete(app.currentAction + 1..app.actionsStack.high)
+
       app.circlesList.add newCircle(pos, 20)
-      app.actionsStack.add newCreateAction(pos)
+      app.actionsStack.add newAction(pos, Create, 20)
+      app.currentAction = app.actionsStack.high
 
   if igIsItemHovered():
     let pos = igGetIO().mousePos
@@ -305,7 +304,8 @@ proc drawCircleDrawer(app: var App) =
     igEndPopup()
 
   if openCirclePopup:
-    app.actionsStack.add newResizeAction(app.circlesList[app.currentCirc].pos, app.circlesList[app.currentCirc].radius)
+    app.actionsStack.add newAction(app.circlesList[app.currentCirc].pos, Resize, app.circlesList[app.currentCirc].radius)
+    app.currentAction = app.actionsStack.high
     igOpenPopup("##adjustDiameter")
 
   if igBeginPopupModal("##adjustDiameter", flags = makeFlags(ImGuiWindowFlags.NoResize)):
@@ -314,11 +314,21 @@ proc drawCircleDrawer(app: var App) =
       app.circlesList[app.currentCirc].radius = app.diameter / 2        
 
     if igButton("OK"):
-      if app.actionsStack[^1].prevRadius == app.circlesList[app.currentCirc].radius:
+      if app.actionsStack[^1].radius == app.circlesList[app.currentCirc].radius:
         app.actionsStack.del(app.actionsStack.high)
+        app.currentAction = app.actionsStack.high
+      else:
+        if app.currentAction != app.actionsStack.high:
+          app.actionsStack.delete(app.currentAction + 1..app.actionsStack.high)
+
+        app.currentAction = app.actionsStack.high
+
       igCloseCurrentPopup()
 
     igEndPopup()
+
+proc drawCells(app: App) = 
+  app.spreadsheet.draw()
 
 proc drawBasic(app: var App) = 
   # Widgets/Basic/Button
@@ -515,7 +525,8 @@ proc drawMain(app: var App) = # Draw the main window
   igSetNextWindowSize(viewport.workSize)
 
   if igBegin(app.config["name"].getString().cstring, flags = makeFlags(ImGuiWindowFlags.NoResize, NoDecoration, NoMove)):
-    igText(FA_Info & " Application average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO().framerate, igGetIO().framerate)
+    igText(FA_Info & " Application average %.3f ms/frame (%.1f FPS)", 1000f / igGetIO().framerate, igGetIO().framerate)
+   
     if igBeginTabBar("tabs"): 
       if igBeginTabItem("7GUIs"):
         if igCollapsingHeader("Counter"): app.drawCounter()
@@ -524,6 +535,8 @@ proc drawMain(app: var App) = # Draw the main window
         if igCollapsingHeader("Timer"): app.drawTimer()
         if igCollapsingHeader("CRUD"): app.drawCRUD()
         if igCollapsingHeader("Circle Drawer"): app.drawCircleDrawer()
+        if igCollapsingHeader("Cells"): app.drawCells()
+
         igEndTabItem()
 
       if igBeginTabItem("Basic"):
@@ -534,22 +547,33 @@ proc drawMain(app: var App) = # Draw the main window
 
   igEnd()
 
-proc display(app: var App) = # Called in the main loop
+proc render(app: var App) = # Called in the main loop
+  # Poll and handle events (inputs, window resize, etc.)
   glfwPollEvents()
 
+  # Start Dear ImGui Frame
   igOpenGL3NewFrame()
   igGlfwNewFrame()
   igNewFrame()
 
+  # Draw application
   app.drawMain()
 
+  # Render
   igRender()
 
-  let bgColor = igGetStyle().colors[WindowBg.ord]
+  var displayW, displayH: int32
+  let bgColor = igColorConvertU32ToFloat4(uint32 WindowBg)
+
+  app.win.getFramebufferSize(displayW.addr, displayH.addr)
+  glViewport(0, 0, displayW, displayH)
   glClearColor(bgColor.x, bgColor.y, bgColor.z, bgColor.w)
   glClear(GL_COLOR_BUFFER_BIT)
 
   igOpenGL3RenderDrawData(igGetDrawData())  
+
+  app.win.makeContextCurrent()
+  app.win.swapBuffers()
 
 proc initWindow(app: var App) = 
   glfwWindowHint(GLFWContextVersionMajor, 3)
@@ -557,7 +581,7 @@ proc initWindow(app: var App) =
   glfwWindowHint(GLFWOpenglForwardCompat, GLFW_TRUE)
   glfwWindowHint(GLFWOpenglProfile, GLFW_OPENGL_CORE_PROFILE)
   glfwWindowHint(GLFWResizable, GLFW_TRUE)
-  
+
   app.win = glfwCreateWindow(
     app.prefs["win/width"].getInt().int32, 
     app.prefs["win/height"].getInt().int32, 
@@ -591,10 +615,6 @@ proc initWindow(app: var App) =
   else:
     app.win.setWindowPos(app.prefs["win/x"].getInt().int32, app.prefs["win/y"].getInt().int32)
 
-  app.win.makeContextCurrent()
-  # Enable vsync to limit the FPS
-  glfwSwapInterval(1)
-
 proc initPrefs(app: var App) = 
   app.prefs = toPrefs({
     win: {
@@ -614,6 +634,7 @@ proc initApp(config: PObjectType): App =
     filterBuf: newString(64), nameBuf: newString(32), surnameBuf: newString(32), currentName: -1, 
     namesData: @[("Elegant", "Beef"), ("Rika", "Nanakusa"), ("Omar", "Cornut"), ("Armen", "Ghazaryan"), ("Uncle", "Hmm")], 
     currentCirc: -1, currentAction: -1, 
+    spreadsheet: initSpreadsheet("##spreadsheet", 99, 25, makeFlags(ImGuiTableFlags.ScrollX, ImGuiTableFlags.ScrollY, Borders)), 
   )
   result.initPrefs()
   result.initConfig(result.config["settings"])
@@ -629,9 +650,8 @@ proc terminate(app: var App) =
   app.prefs["win/width"] = width
   app.prefs["win/height"] = height
 
-  app.win.destroyWindow()
-
-template initFonts(app: var App, io: ptr ImGuiIO) = 
+proc initFonts(app: var App) = 
+  let io = igGetIO()
   app.font = io.fonts.igAddFontFromMemoryTTF(app.config["fontPath"].getData(), app.config["fontSize"].getFloat())
 
   # Add ForkAwesome icon font
@@ -644,36 +664,51 @@ template initFonts(app: var App, io: ptr ImGuiIO) =
 proc main() =
   var app = initApp(configPath.getData().parsePrefs())
 
-  # Init
-  let
-    context = igCreateContext()
-    io = igGetIO()
-
-  io.iniFilename = nil # Disable ini file
-
+  # Setup Window
   doAssert glfwInit()
   app.initWindow()
-  app.initFonts(io)
+  
+  app.win.makeContextCurrent()
+  glfwSwapInterval(1) # Enable vsync
+
   doAssert glInit()
 
+  # Setup Dear ImGui context
+  igCreateContext()
+  let io = igGetIO()
+  io.iniFilename = nil # Disable .ini config file
+
+  # Setup Dear ImGui style using ImStyle
+  setIgStyle(app.config["stylePath"].getData().parsePrefs())
+
+  # Setup Platform/Renderer backends
   doAssert igGlfwInitForOpenGL(app.win, true)
   doAssert igOpenGL3Init()
 
-  # Load application style
-  setIgStyle(app.config["stylePath"].getData().parsePrefs())
+  # Load fonts
+  app.initFonts()
 
   # Main loop
-  while not app.win.windowShouldClose:
-    app.display()
-    app.win.swapBuffers()
+  lastTime = glfwGetTime()
+  glfwWaitEvents()
 
-  # Shutdown
+  while not app.win.windowShouldClose:
+    app.render()
+    
+    # See https://github.com/glfw/glfw/issues/1308#issuecomment-409245792
+    while glfwGetTime() < lastTime + (1 / framerate):
+      sleep(10)
+
+    lastTime += 1 / framerate
+
+  # Cleanup
   igOpenGL3Shutdown()
   igGlfwShutdown()
   
-  context.igDestroyContext()
+  igDestroyContext()
   
   app.terminate()
+  app.win.destroyWindow()
   glfwTerminate()
 
 when isMainModule:

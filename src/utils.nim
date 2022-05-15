@@ -4,7 +4,7 @@ import niprefs
 import stb_image/read as stbi
 import nimgl/[imgui, glfw, opengl]
 
-import icons
+import spreadsheet, icons
 
 export enumutils
 
@@ -21,12 +21,10 @@ type
     hovered*: bool
 
 
-  Action* = ref object
+  Action* = object
     pos*: ImVec2
-    case kind*: ActionKind
-    of Resize:
-      prevRadius*: float32
-    else: discard
+    kind*: ActionKind
+    radius*: float32
 
   App* = ref object
     win*: GLFWWindow
@@ -55,6 +53,8 @@ type
     diameter*: int32
     currentCirc*, currentAction*: int
     circlesList*: seq[Circle]
+    # Cells
+    spreadsheet*: Spreadsheet
 
     # Basic tab variables
     num*: int32
@@ -92,11 +92,8 @@ type
 proc newCircle*(pos: ImVec2, radius: float32): Circle = 
   Circle(pos: pos, radius: radius)
 
-proc newResizeAction*(pos: ImVec2, prevRadius: float32): Action = 
-  Action(pos: pos, kind: Resize, prevRadius: prevRadius)
-
-proc newCreateAction*(pos: ImVec2): Action = 
-  Action(pos: pos, kind: Create)
+proc newAction*(pos: ImVec2, kind: ActionKind, radius: float32): Action = 
+  Action(pos: pos, kind: kind, radius: radius)
 
 # To be able to print large holey enums
 macro enumFullRange*(a: typed): untyped =
@@ -201,6 +198,9 @@ proc igGetItemRectMax*(): ImVec2 =
 proc igCalcTextSize*(text: cstring, text_end: cstring = nil, hide_text_after_double_hash: bool = false, wrap_width: float32 = -1.0'f32): ImVec2 = 
   igCalcTextSizeNonUDT(result.addr, text, text_end, hide_text_after_double_hash, wrap_width)
 
+proc igColorConvertU32ToFloat4*(color: uint32): ImVec4 = 
+  igColorConvertU32ToFloat4NonUDT(result.addr, color)
+
 proc getCenter*(self: ptr ImGuiViewport): ImVec2 = 
   getCenterNonUDT(result.addr, self)
 
@@ -213,7 +213,6 @@ proc centerCursorX*(width: float32, align: float = 0.5f, availWidth: float32 = i
   
   if off > 0:
     igSetCursorPosX(igGetCursorPosX() + off)
-
 
 proc initGLFWImage*(data: ImageData): GLFWImage = 
   result = GLFWImage(pixels: cast[ptr cuchar](data.image[0].unsafeAddr), width: int32 data.width, height: int32 data.height)
