@@ -10,11 +10,7 @@ import src/[spreadsheet, prefsmodal, utils, icons]
 when defined(release):
   from resourcesdata import resources
 
-const
-  framerate = 30
-  configPath = "config.niprefs"
-
-var lastTime: float64
+const configPath = "config.niprefs"
 
 proc getData(path: string): string = 
   when defined(release):
@@ -549,7 +545,7 @@ proc drawMain(app: var App) = # Draw the main window
 
 proc render(app: var App) = # Called in the main loop
   # Poll and handle events (inputs, window resize, etc.)
-  glfwPollEvents()
+  glfwPollEvents() # Use glfwWaitEvents() to only update on events
 
   # Start Dear ImGui Frame
   igOpenGL3NewFrame()
@@ -650,17 +646,6 @@ proc terminate(app: var App) =
   app.prefs["win/width"] = width
   app.prefs["win/height"] = height
 
-proc initFonts(app: var App) = 
-  let io = igGetIO()
-  app.font = io.fonts.igAddFontFromMemoryTTF(app.config["fontPath"].getData(), app.config["fontSize"].getFloat())
-
-  # Add ForkAwesome icon font
-  var
-    config = utils.newImFontConfig(mergeMode = true)
-    ranges = [FA_Min.uint16,  FA_Max.uint16]
-
-  io.fonts.igAddFontFromMemoryTTF(app.config["iconFontPath"].getData(), app.config["fontSize"].getFloat(), config.addr, ranges[0].addr)
-
 proc main() =
   var app = initApp(configPath.getData().parsePrefs())
 
@@ -686,20 +671,17 @@ proc main() =
   doAssert igOpenGL3Init()
 
   # Load fonts
-  app.initFonts()
+  app.font = io.fonts.igAddFontFromMemoryTTF(app.config["fontPath"].getData(), app.config["fontSize"].getFloat())
+
+  # Merge ForkAwesome icon font
+  var config = utils.newImFontConfig(mergeMode = true)
+  var ranges = [FA_Min.uint16,  FA_Max.uint16]
+
+  io.fonts.igAddFontFromMemoryTTF(app.config["iconFontPath"].getData(), app.config["fontSize"].getFloat(), config.addr, ranges[0].addr)
 
   # Main loop
-  lastTime = glfwGetTime()
-  glfwWaitEvents()
-
   while not app.win.windowShouldClose:
     app.render()
-    
-    # See https://github.com/glfw/glfw/issues/1308#issuecomment-409245792
-    while glfwGetTime() < lastTime + (1 / framerate):
-      sleep(10)
-
-    lastTime += 1 / framerate
 
   # Cleanup
   igOpenGL3Shutdown()
