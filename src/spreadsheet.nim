@@ -9,7 +9,7 @@ type
     label*: cstring # ImGui label ID
     rowMax*: int
     colMax*: range[1..25]
-    cells: Table[Cell, tuple[text, formula: string]] # Cells buffer strings
+    cells: Table[Cell, tuple[text, formula: string, children: seq[Cell]]] # Cells buffer strings
     flags*: ImGuiTableFlags
     selectedCell*: Cell
     editing*: bool # Editing selected cell
@@ -63,38 +63,58 @@ proc findCellsId(input: string): seq[string] =
   input.findAll(re"[A-Za-z]\d{1,2}")
 
 proc parseCell(input: string): Cell = 
-  let (ok, row, col) = input.scanTuple("$c$i")
-  result = (upperLetters.find(row.toUpperAscii()), col)
+  let (ok, col, row) = input.scanTuple("$c$i")
+  result = (row, upperLetters.find(col.toUpperAscii()))
 
-proc replaceCellsId(self: Spreadsheet, input: string): string = 
-  result = input
+proc replaceCellsId(self: var Spreadsheet, input: string): tuple[cells: seq[Cell], output: string] = 
+  result.output = input
   for id in input.findCellsId():
     let cell = id.parseCell()
-    if cell notin self.cells: continue
+    result.cells.add cell
+
+    if cell == self.selectedCell:
+      return
 
     if self.cells[cell].text.cleanString().len == 0:
-      result = result.replace(id, "0")
+      result.output = result.output.replace(id, "0")
     else:
-      if cell == self.selectedCell:
-        return
+      result.output = result.output.replace(id, self.cells[cell].text.cleanString())
 
-      result = result.replace(id, self.cells[cell].text)
+proc updateCell(self: var Spreadsheet, cell: Cell) = 
+  let formula = self.cells[cell].formula.cleanString()
 
-proc draw*(self: var Spreadsheet) = 
-  proc updateCell(self: var Spreadsheet, cell: Cell) = 
-    let formula = replaceCellsId(self, self.cells[cell].formula.cleanString())
-    echo formula
-    if formula.len > 1 and formula[0] == '=' and (let exprResult = evalArithm(formula[1..^1]); exprResult.kind == ParseResultKind.success):
+  if formula.len > 1 and formula[0] == '=': 
+    let (cellsInFormula, replacedFormula) = self.replaceCellsId(formula)
+    let exprResult = evalArithm(replacedFormula[1..^1])
+
+    if exprResult.kind == ParseResultKind.success:
       self.cells[cell].text = $exprResult.value
     else:
       self.cells[cell].text = self.cells[cell].formula
 
-  # One more column because of the row numbers column
-  if igBeginTable(self.label, int32 self.colMax+1, self.flags):
+    for parent in cellsInFormula:
+      if cell notin self.cells[parent].children:
+        self.cells[parent].children.add cell
+
+  else:
+    self.cells[cell].text = self.cells[cell].formula
+
+  for child in self.cells[cell].children:
+    echo "Updating ", child
+    self.updateCell(child)
+
+proc draw*(self: var Spreadsheet) = 
+  if igButton("Echo"):
+    echo "Editing: ", self.editing
+    echo "Selected: ", self.selectedCell
+    echo "\t", self.cells[self.selectedCell], "\n"
+
+  # Two more column because of the row numbers column
+  if igBeginTable(self.label, int32 self.colMax+2, self.flags):
     igTableSetupScrollFreeze(1, 1)
     # Top left corner is an empty header
     igTableSetupColumn(cstring "")
-    for col in 0..<self.colMax:
+    for col in 0..self.colMax:
       igTableSetupColumn(cstring $upperLetters[col])
     igTableHeadersRow()
 
@@ -112,9 +132,9 @@ proc draw*(self: var Spreadsheet) =
       igTableSetBgColor(RowBg0, igGetColorU32(TableRowBgAlt))
       igPushStyleColor(Text, igGetColorU32(TableRowBg))
 
-      for col in 0..<self.colMax:
+      for col in 0..self.colMax:
         if (row, col) notin self.cells:
-          self.cells[(row, col)] = ("", newString(32))
+          self.cells[(row, col)] = ("", newString(32), @[])
 
         igTableNextColumn()
 
@@ -133,10 +153,7 @@ proc draw*(self: var Spreadsheet) =
           igPushStyleColor(Border, igGetColorU32(BorderShadow))
 
         igSetNextItemWidth(70)
-        if inputTextDisabled:
-          igInputText(cstring &"##{row}{col}", cstring self.cells[(row, col)].text, 32)
-        else:
-          igInputText(cstring &"##{row}{col}", cstring self.cells[(row, col)].formula, 32)
+        igInputText(cstring &"##{row}{col}", if inputTextDisabled: self.cells[(row, col)].text.cstring else: self.cells[(row, col)].formula.cstring, 32)
 
         # If pressed enter
         # See https://github.com/ocornut/imgui/issues/589#issuecomment-238358689
