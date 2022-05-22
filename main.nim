@@ -630,7 +630,7 @@ proc initApp(config: PObjectType): App =
     filterBuf: newString(64), nameBuf: newString(32), surnameBuf: newString(32), currentName: -1, 
     namesData: @[("Elegant", "Beef"), ("Rika", "Nanakusa"), ("Omar", "Cornut"), ("Armen", "Ghazaryan"), ("Uncle", "Hmm")], 
     currentCirc: -1, currentAction: -1, 
-    spreadsheet: initSpreadsheet("##spreadsheet", 99, 25, makeFlags(ImGuiTableFlags.ScrollX, ImGuiTableFlags.ScrollY, Borders)), 
+    spreadsheet: initSpreadsheet("##spreadsheet", 99, 26, makeFlags(ImGuiTableFlags.ScrollX, ImGuiTableFlags.ScrollY, Borders)), 
   )
   result.initPrefs()
   result.initConfig(result.config["settings"])

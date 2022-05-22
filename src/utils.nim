@@ -351,3 +351,8 @@ proc igPushDisabled*() =
 proc igPopDisabled*() = 
   igPopItemFlag()
   igPopStyleVar()
+
+proc remove*[T](s: var seq[T], val: T) = 
+  for i in s.high.countDown(0):
+    if s[i] == val:
+      s.delete(i)

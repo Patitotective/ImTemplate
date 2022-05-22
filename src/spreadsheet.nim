@@ -8,8 +8,8 @@ type
   Spreadsheet* = object
     label*: cstring # ImGui label ID
     rowMax*: int
-    colMax*: range[1..25]
-    cells: Table[Cell, tuple[text, formula: string, children: seq[Cell]]] # Cells buffer strings
+    colMax*: range[1..26]
+    cells: Table[Cell, tuple[text, buffer, formula: string, children, parents: seq[Cell]]]
     flags*: ImGuiTableFlags
     selectedCell*: Cell
     editing*: bool # Editing selected cell
@@ -60,48 +60,75 @@ proc initSpreadsheet*(label: cstring, rowMax, colMax: int, flags: ImGuiTableFlag
   Spreadsheet(label: label, rowMax: rowMax, colMax: colMax, flags: flags, selectedCell: (-1, -1))
 
 proc findCellsId(input: string): seq[string] =  
-  input.findAll(re"[A-Za-z]\d{1,2}")
+  input.findAll(re"[A-Za-z]\d+")
 
 proc parseCell(input: string): Cell = 
-  let (ok, col, row) = input.scanTuple("$c$i")
-  result = (row, upperLetters.find(col.toUpperAscii()))
+  let (ok, colLetter, row) = input.scanTuple("$c$i")
+  let col = upperLetters.find(colLetter.toUpperAscii())
 
-proc replaceCellsId(self: var Spreadsheet, input: string): tuple[cells: seq[Cell], output: string] = 
+  if row < 0 or col < 0:
+    result = (-1, -1)
+  else:
+    result = (row-1, col)
+
+proc replaceCellsId(self: var Spreadsheet, input: string, parent: Cell): tuple[cells: seq[Cell], output: string] = 
   result.output = input
   for id in input.findCellsId():
     let cell = id.parseCell()
     result.cells.add cell
 
-    if cell == self.selectedCell:
+    if cell.row notin 0..self.rowMax or cell.col notin 0..self.colMax or cell == parent:
+      result.output = input
       return
 
-    if self.cells[cell].text.cleanString().len == 0:
+    if self.cells[cell].text.len == 0:
       result.output = result.output.replace(id, "0")
     else:
-      result.output = result.output.replace(id, self.cells[cell].text.cleanString())
+      result.output = result.output.replace(id, self.cells[cell].text)
 
-proc updateCell(self: var Spreadsheet, cell: Cell) = 
-  let formula = self.cells[cell].formula.cleanString()
+proc updateCell(self: var Spreadsheet, cell: Cell, parent: Cell = (-1, -1)) = 
+  let parent = if parent == (-1, -1): self.selectedCell else: parent
+  let formula = self.cells[cell].formula
+
+  echo cell
+
+  # Remove cell from all its parents
+  for parent in self.cells[cell].parents:
+    echo "\tRemoving ", parent, " parent"
+    self.cells[parent].children.remove(cell)
+
+  self.cells[cell].parents.reset()
 
   if formula.len > 1 and formula[0] == '=': 
-    let (cellsInFormula, replacedFormula) = self.replaceCellsId(formula)
+    echo "\tFormula: ", formula
+    let (cellsInFormula, replacedFormula) = self.replaceCellsId(formula, parent)
+    echo "\tReplaced cells in formula: ", replacedFormula
     let exprResult = evalArithm(replacedFormula[1..^1])
 
     if exprResult.kind == ParseResultKind.success:
+      echo "\tValid formula: ", exprResult
       self.cells[cell].text = $exprResult.value
-    else:
-      self.cells[cell].text = self.cells[cell].formula
+      
+      # Add parents and children
+      for parent in cellsInFormula:
+        if parent != self.selectedCell and parent notin self.cells[cell].parents:
+          echo "\tNew parent: ", parent
+          self.cells[cell].parents.add parent
+          self.cells[parent].children.add cell
 
-    for parent in cellsInFormula:
-      if cell notin self.cells[parent].children:
-        self.cells[parent].children.add cell
+    else:
+      echo "\tInvalid formula: ", exprResult
+      self.cells[cell].text = formula
 
   else:
-    self.cells[cell].text = self.cells[cell].formula
+    echo "\tNot a formula"
+    self.cells[cell].text = formula
+
+  echo "\t", self.cells[cell]
 
   for child in self.cells[cell].children:
-    echo "Updating ", child
-    self.updateCell(child)
+    echo "\tUpdating ", child, " from ", cell
+    self.updateCell(child, child)
 
 proc draw*(self: var Spreadsheet) = 
   if igButton("Echo"):
@@ -109,12 +136,12 @@ proc draw*(self: var Spreadsheet) =
     echo "Selected: ", self.selectedCell
     echo "\t", self.cells[self.selectedCell], "\n"
 
-  # Two more column because of the row numbers column
-  if igBeginTable(self.label, int32 self.colMax+2, self.flags):
+  # One more column because of the row numbers column
+  if igBeginTable(self.label, int32 self.colMax+1, self.flags):
     igTableSetupScrollFreeze(1, 1)
     # Top left corner is an empty header
     igTableSetupColumn(cstring "")
-    for col in 0..self.colMax:
+    for col in 0..<self.colMax:
       igTableSetupColumn(cstring $upperLetters[col])
     igTableHeadersRow()
 
@@ -122,47 +149,56 @@ proc draw*(self: var Spreadsheet) =
     igPushStyleColor(FrameBg, 0)
     for row in 0..self.rowMax:
       igTableNextRow()
+      
       # Row number
       igTableNextColumn()
-      
-      igTableSetBgColor(CellBg, igGetColorU32(TableHeaderBg))
-      igSelectable(cstring $row, size = ImVec2(x: 50, y: igTableGetHeaderRowHeight()))
-      
-      # Set background white and text black
+      igTableHeader(cstring $(row + 1))
+
+      # Set background white and the text black
       igTableSetBgColor(RowBg0, igGetColorU32(TableRowBgAlt))
       igPushStyleColor(Text, igGetColorU32(TableRowBg))
 
-      for col in 0..self.colMax:
-        if (row, col) notin self.cells:
-          self.cells[(row, col)] = ("", newString(32), @[])
+      for col in 0..<self.colMax:
+        let cell = (row, col)
+        if cell notin self.cells:
+          self.cells[cell] = ("", newString(32), "", @[], @[])
 
         igTableNextColumn()
 
         # If there are no cells being edited
         # Or the selected cell is not this
-        # Disable input text
+        # Disable input text (the cell)
         var inputTextDisabled = false
-        if not self.editing or self.selectedCell != (row, col):
+        if not self.editing or self.selectedCell != cell:
           inputTextDisabled = true
+          self.cells[cell].buffer[0..self.cells[cell].text.high] = self.cells[cell].text
           igPushItemFlag(ImGuiItemFlags.Disabled, true)
+        else:
+          self.cells[cell].buffer[0..self.cells[cell].formula.high] = self.cells[cell].formula
 
-        # If the selected cell is this
+        # If the selected cell is the current
         # Push border
-        if self.selectedCell == (row, col):
+        if self.selectedCell == cell:
           igPushStyleVar(FrameBorderSize, 1)
           igPushStyleColor(Border, igGetColorU32(BorderShadow))
 
         igSetNextItemWidth(70)
-        igInputText(cstring &"##{row}{col}", if inputTextDisabled: self.cells[(row, col)].text.cstring else: self.cells[(row, col)].formula.cstring, 32)
+        if igInputText(cstring &"##{row}{col}", self.cells[cell].buffer.cstring, 32):
+          if not inputTextDisabled:
+            self.cells[cell].formula = self.cells[cell].buffer.cleanString()
+
+          echo cell
+          echo "\t", inputTextDisabled
+          echo "\t", self.cells[cell]
 
         # If pressed enter
         # See https://github.com/ocornut/imgui/issues/589#issuecomment-238358689
         if igIsItemActivePreviousFrame() and not igIsItemActive() and igIsKeyPressedMap(ImGuiKey.Enter):
-          self.updateCell((row, col))
+          self.updateCell(cell)
           self.editing = false
 
         # Pop border
-        if self.selectedCell == (row, col):
+        if self.selectedCell == cell:
           igPopStyleColor()
           igPopStyleVar()
 
@@ -176,13 +212,13 @@ proc draw*(self: var Spreadsheet) =
           if igIsMouseDoubleClicked(ImGuiMouseButton.Left):
             self.editing = true
             igSetKeyboardFocusHere(-1)
-          # If the selected cell is not this but it is being clicked
-          elif self.selectedCell != (row, col) and igIsMouseClicked(ImGuiMouseButton.Left):
+          # If the selected cell is not the selected one but it is being clicked
+          elif self.selectedCell != cell and igIsMouseClicked(ImGuiMouseButton.Left):
             if self.editing and self.selectedCell.row > -1 and self.selectedCell.col > -1:
               self.updateCell(self.selectedCell)
-            
+
             self.editing = false
-            self.selectedCell = (row, col)
+            self.selectedCell = cell
 
       igPopStyleColor()
 
