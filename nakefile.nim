@@ -3,28 +3,7 @@ import std/[strformat, strutils, sequtils, os]
 import nake
 import niprefs
 
-proc checkPath(path: string) = 
-  ## Iterate through `path.parentDirs` from the root creating all the directories that do not exist.
-  ## **Example:**
-  ## ```nim
-  ## checkPath("a/b/c")
-  ## checkPath("a/b/c/d.png".parentDir)
-  ## ```
-  for dir in path.normalizedPath().parentDirs(fromRoot=true):
-    discard existsOrCreateDir(dir)
-
-proc checkFile(path: string) = 
-  ## Iterate through `path.parentDir.parentDirs` from the root creating all the directories that do not exist.
-  ## **Example:**
-  ## ```nim
-  ## checkFile("a/b/c") # Takes c as a file, not as a directory
-  ## checkFile("a/b/c/d.png") # Only creates a/b/c directories
-  ## ```
-  for dir in path.parentDir.parentDirs(fromRoot=true):
-    discard existsOrCreateDir(dir)
-
 const
-  resourcesDir = "data"
   configPath = "config.niprefs"
   desktop = """
   [Desktop Entry]
@@ -37,52 +16,57 @@ const
 
   X-AppImage-Name=$name
   X-AppImage-Version=$version
+  X-AppImage-Arch=$arch
   """.dedent()
 let
   config = configPath.readPrefs()
-  resources = [
-    configPath, 
-    config["iconPath"].getString(), 
-    config["stylePath"].getString(), 
-    config["iconFontPath"].getString(),
-    config["fontPath"].getString()
-  ]
   name = config["name"].getString() 
+  arch = if "arch" in config: config["arch"].getString() else: "x86_64"
 
-task "build", "Build AppImage application":
+task "build", "Build AppImage":
   shell "nimble install -d -y"
 
-  checkPath("AppDir")
+  discard existsOrCreateDir("AppDir")
+  if "AppDir/AppRun".needsRefresh("main.nim"):
+    shell "nim cpp -d:release -d:appImage --app:gui --out:AppDir/AppRun main"
+
   writeFile(
     &"AppDir/{name}.desktop", 
     desktop % [
       "name", name, 
       "categories", config["categories"].getSeq().mapIt(it.getString()).join(";"), 
       "version", config["version"].getString(), 
-      "comment", config["comment"].getString()
+      "comment", config["comment"].getString(), 
+      "arch", arch
     ]
   )
-  copyFile(config["iconPath"].getString(), "AppDir" / ".DirIcon")
   copyFile(config["svgIconPath"].getString(), "AppDir" / &"{name}.svg")
+  if "appstreamPath" in config:
+    createDir("AppDir/usr/share/metainfo")
+    copyFile(config["appstreamPath"].getString(), &"AppDir/usr/share/metainfo/{name}.appdata.xml")
 
-  shell "nim cpp -d:release -d:appImage --app:gui --out:AppDir/AppRun main.nim"
+  var appimagetoolPath = "appimagetool"
+  if not silentShell("Checking for appimagetool", appimagetoolPath, "--help"):
+      withDir "AppDir":
+        appimagetoolPath = "../appimagetool-x86_64.AppImage"
+        if not fileExists(appimagetoolPath):
+          direSilentShell &"Dowloading {appimagetoolPath}", "wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O ", appimagetoolPath
+        shell "chmod +x", appimagetoolPath
 
-  # Add resources
-  checkPath("AppDir" / resourcesDir)
-
-  for name, path in resources:
-    copyFile(path, "AppDir" / resourcesDir / path.extractFilename())
-
-  let appDir = "AppDir".absolutePath()
   withDir "AppDir":
-    shell &"appimagetool ."
+    if "ghRepo" in config:
+      echo "Building updateable AppImage"
+      let ghInfo = config["ghRepo"].getString().split('/')
+      direShell appimagetoolPath, "-u", &"\"gh-releases-zsync|{ghInfo[0]}|{ghInfo[1]}|latest|{name}-*.AppImage.zsync\"", CurDir, &"{name}-{arch}.AppImage"
+    else:
+      echo &"ghRepo key not in {configPath}. Skipping updateable AppImage"
+      direShell appimagetoolPath, CurDir
 
-task "run", "Build (if needed) and run AppImage application":
+  echo "Succesfully built AppImage at AppDir/"
+
+task "run", "Build and run AppImage":
   if "AppDir/AppRun".needsRefresh("main.nim"):
     runTask("build")
-  
-  # First .AppImage in AppDir starting with name
-  var appFile = walkFiles(&"AppDir/{name}*.AppImage").toSeq[0]
 
-  shell &"chmod a+x {appFile}" # Make it executable
-  shell &"./{appFile}"
+  shell "chmod a+x AppDir/*.AppImage" # Make it executable
+  shell "AppDir/*.AppImage"

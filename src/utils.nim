@@ -1,23 +1,29 @@
-import std/[strutils, strformat, enumutils, macros, typetraits]
-
+import std/[strutils, strformat, typetraits, enumutils, macros, times, os]
 import chroma
 import niprefs
 import stb_image/read as stbi
 import nimgl/[imgui, glfw, opengl]
 
+import spreadsheet
+
 export enumutils
 
 type
-  App* = ref object
-    win*: GLFWWindow
-    font*: ptr ImFont
-    prefs*: Prefs
-    config*: PObjectType # Prefs table
-    cache*: PObjectType # Settings cache
+  Element* = enum
+    Fire, Earth, Air, Water
 
-    # Variables
-    somefloat*: float32
-    counter*: int
+  ActionKind* = enum
+    Resize, Create
+
+  Circle* = object
+    pos*: ImVec2
+    radius*: float32
+    hovered*: bool
+
+  Action* = object
+    pos*: ImVec2
+    kind*: ActionKind
+    radius*: float32
 
   SettingTypes* = enum
     Input # Input text
@@ -33,6 +39,59 @@ type
     Section
 
   ImageData* = tuple[image: seq[byte], width, height: int]
+
+  App* = ref object
+    win*: GLFWWindow
+    font*: ptr ImFont
+    prefs*: Prefs
+    cache*: PObjectType # Settings cache
+    config*: PObjectType # Prefs table
+
+    # Variables    
+    # Counter
+    counter*: int
+    # Temperature Converter
+    celsius*, fahrenheit*: string
+    # Flight Booker
+    currentFlight*: int
+    startDate*, returnDate*: string
+    # Timer
+    duration*, startTime*, curTime*: float32
+    # CRUD
+    filterBuf*, nameBuf*, surnameBuf*: string
+    currentName*: int
+    namesData*: seq[tuple[name, surname: string]]
+    # Circle Drawer
+    actionsStack*: seq[Action]
+    diameter*: int32
+    currentCirc*, currentAction*: int
+    circlesList*: seq[Circle]
+    # Cells
+    spreadsheet*: Spreadsheet
+
+    # Basic tab variables
+    num*: int32
+    elem*: Element
+    checked*: bool
+    angle*: float32
+    double*: float64
+    sliderInt*: int32
+    basicCounter*, clicked*: int
+    dragInt*, dragInt2*: int32
+    color3*: array[3, float32]
+    color4*: array[4, float32]
+    float3*: array[3, float32]
+    buffer*, hintBuffer*: string
+    floatNum*, scientFloat*: float32
+    dragFloat*, dragFloat2*: float32
+    sliderFloat*, sliderFloat2*: float32
+    radioCurrent*, comboCurrent*, listCurrent*: int32
+
+proc newCircle*(pos: ImVec2, radius: float32): Circle = 
+  Circle(pos: pos, radius: radius)
+
+proc newAction*(pos: ImVec2, kind: ActionKind, radius: float32): Action = 
+  Action(pos: pos, kind: kind, radius: radius)
 
 # To be able to print large holey enums
 macro enumFullRange*(a: typed): untyped =
@@ -114,12 +173,38 @@ proc igVec2*(x, y: float32): ImVec2 = ImVec2(x: x, y: y)
 
 proc igVec4*(x, y, z, w: float32): ImVec4 = ImVec4(x: x, y: y, z: z, w: w)
 
+proc igVec4*(color: Color): ImVec4 = ImVec4(x: color.r, y: color.g, z: color.b, w: color.a)
+
+proc igHSV*(h, s, v: float32, a: float32 = 1f): ImColor = 
+  result.addr.hSVNonUDT(h, s, v, a)
+
+proc igGetContentRegionAvail*(): ImVec2 = 
+  igGetContentRegionAvailNonUDT(result.addr)
+
+proc igGetWindowPos*(): ImVec2 = 
+  igGetWindowPosNonUDT(result.addr)
+
+proc igCalcTextSize*(text: cstring, text_end: cstring = nil, hide_text_after_double_hash: bool = false, wrap_width: float32 = -1.0'f32): ImVec2 = 
+  igCalcTextSizeNonUDT(result.addr, text, text_end, hide_text_after_double_hash, wrap_width)
+
+proc igColorConvertU32ToFloat4*(color: uint32): ImVec4 = 
+  igColorConvertU32ToFloat4NonUDT(result.addr, color)
+
+proc getCenter*(self: ptr ImGuiViewport): ImVec2 = 
+  getCenterNonUDT(result.addr, self)
+
+proc centerCursorX*(width: float32, align: float = 0.5f, availWidth: float32 = igGetContentRegionAvail().x) = 
+  let off = (availWidth - width) * align
+  
+  if off > 0:
+    igSetCursorPosX(igGetCursorPosX() + off)
+
 proc initGLFWImage*(data: ImageData): GLFWImage = 
   result = GLFWImage(pixels: cast[ptr cuchar](data.image[0].unsafeAddr), width: int32 data.width, height: int32 data.height)
 
-proc readImage*(path: string): ImageData = 
+proc readImageFromMemory*(data: string): ImageData = 
   var channels: int
-  result.image = stbi.load(path, result.width, result.height, channels, stbi.Default)
+  result.image = stbi.loadFromMemory(cast[seq[byte]](data), result.width, result.height, channels, stbi.Default)
 
 proc loadTextureFromData*(data: var ImageData, outTexture: var GLuint) =
     # Create a OpenGL texture identifier
@@ -156,3 +241,84 @@ proc newImFontConfig*(mergeMode = false): ImFontConfig =
   result.glyphMaxAdvanceX = float.high
   result.rasterizerMultiply = 1.0
   result.mergeMode = mergeMode
+
+proc igAddFontFromMemoryTTF*(self: ptr ImFontAtlas, data: string, size_pixels: float32, font_cfg: ptr ImFontConfig = nil, glyph_ranges: ptr ImWchar = nil): ptr ImFont {.discardable.} = 
+  let igFontStr = cast[cstring](igMemAlloc(data.len.uint))
+  igFontStr[0].unsafeAddr.copyMem(data[0].unsafeAddr, data.len)
+  result = self.addFontFromMemoryTTF(igFontStr, data.len.int32, sizePixels, font_cfg, glyph_ranges)
+
+proc openURL*(url: string) = 
+  when defined(MacOS) or defined(MacOSX):
+    discard execShellCmd("open " & url)
+  elif defined(Windows):
+    discard execShellCmd("start " & url)
+  else:
+    discard execShellCmd("xdg-open " & url)
+
+proc removeInside*(text: string, open, close: char): tuple[text: string, inside: string] = 
+  ## Remove the characters inside open..close from text, return text and the removed characters
+  runnableExamples:
+    assert "Hello<World>".removeInside('<', '>') == ("Hello", "World")
+  var inside = false
+  for i in text:
+    if i == open:
+      inside = true
+      continue
+
+    if not inside:
+      result.text.add i
+
+    if i == close:
+      inside = false
+
+    if inside:
+      result.inside.add i
+
+proc initconfig*(app: var App, settings: PrefsNode, parent: string = "") = 
+  # Add the preferences with the values defined in config["settings"]
+  for name, data in settings: 
+    let settingType = parseEnum[SettingTypes](data["type"])
+    if settingType == Section:
+      app.initConfig(data["content"], parent = name)  
+    elif parent.len > 0:
+      if not app.prefs.hasPath(parent, name):
+        app.prefs[parent, name] = data["default"]
+    else:
+      if name notin app.prefs:
+        app.prefs[name] = data["default"]
+
+proc validateDate*(input, format: string): tuple[success: bool, date: DateTime] = 
+  try:
+    result.date = input.parse(format)
+    result.success = true
+  except TimeParseError:
+    result.success = false
+
+proc newString*(lenght: int, default: string): string = 
+  result = newString(lenght)
+  result[0..default.high] = default
+
+proc cleanString*(str: string): string = 
+  if '\0' in str:
+    str[0..<str.find('\0')].strip()
+  else:
+    str.strip()
+
+proc igPushDisabled*() = 
+  igPushItemFlag(ImGuiItemFlags.Disabled, true)
+  igPushStyleVar(ImGuiStyleVar.Alpha, igGetStyle().alpha * 0.6)
+
+proc igPopDisabled*() = 
+  igPopItemFlag()
+  igPopStyleVar()
+
+proc remove*[T](s: var seq[T], val: T) = 
+  for i in s.high.countDown(0):
+    if s[i] == val:
+      s.delete(i)
+
+proc pushString*(str: var string, val: string) = 
+  if val.len < str.len:
+    str[0..val.len] = val & '\0'
+  else:
+    str[0..str.high] = val[0..str.high]
