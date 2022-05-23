@@ -10,7 +10,7 @@ Template for making a single-windowed (or not) Dear ImGui application in Nim.
 - AppImage support (Linux).
 - Updateable AppImage support (with [gh-releases-zsync](https://github.com/AppImage/AppImageSpec/blob/master/draft.md#github-releases)).
 - Simple data resources support.
-- GitHub workflow for building and uploading the AppImage and exe to the last release.
+- GitHub workflow for building and uploading the AppImage and `.exe` as assets.
 
 (To use NimGL in Ubuntu you might need some libraries `sudo apt install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl-dev`)
 
@@ -22,14 +22,14 @@ This template implements the [7GUIs tasks](https://eugenkiss.github.io/7guis/tas
 - `README.md`: Project's description.
 - `LICENSE`: Project's license.
 - `main.nim`: Application's logic.
-- `resourcesdata.nim`: To bundle data resources (see [Building](#building)).
+- `resourcesdata.nim`: To bundle data resources (see [Bundling](#bundling)).
 - `nakefile.md`: [Nakefile](https://github.com/fowlmouth/nake) to build the AppImage (see [Building](#building)).
 - `config.nims`: Nim compile configuration.
 - `config.niprefs`: Application's configuration (see [Config](#config)).
 - `ImExample.nimble`: [Nimble file](https://github.com/nim-lang/nimble#creating-packages).
 - `assets`: 
 	- `icon.png`, `icon.svg`: App icons.
-	- `style.niprefs`: App style (using https://github.com/Patitotective/ImStyle).
+	- `style.niprefs`: App style (using [ImStyle](https://github.com/Patitotective/ImStyle)).
 	- `Cousine-Regular.ttf`, `Karla-Regular.ttf`, `Roboto-Regular.ttf`, `ProggyVector Regular.ttf`: Multiple fonts so you can choose the one you like the most.
 	- `forkawesome-webfont.ttf`: ForkAwesome icon font (see https://forkaweso.me/).
 - `src`:
@@ -39,7 +39,7 @@ This template implements the [7GUIs tasks](https://eugenkiss.github.io/7guis/tas
 	- `prefsmodal.nim`: Draw the preferences modal (called in `main.nim`)
 
 ## Icon Font
-ImTemplate uses [ForkAwesome](https://forkaweso.me)'s icon font to be able to display icon as text, to do it you only need to import [`icons.nim`](https://github.com/Patitotective/ImTemplate/blob/main/src/icons.niprefs) (where the unicode points for each icon are defined), browse https://forkaweso.me/Fork-Awesome/icons, choose the one you want and, for example, if you want to use [`fa-floppy-o`](https://forkaweso.me/Fork-Awesome/icon/floppy-o/), you will write `FA_FloppyO` in string for Dear Imgui to display:
+ImTemplate uses [ForkAwesome](https://forkaweso.me)'s icon font to be able to display icon in labes, to do it you only need to import [`icons.nim`](https://github.com/Patitotective/ImTemplate/blob/main/src/icons.niprefs) (where the unicode points for each icon are defined), browse https://forkaweso.me/Fork-Awesome/icons, choose the one you want and, for example, if you want to use [`fa-floppy-o`](https://forkaweso.me/Fork-Awesome/icon/floppy-o/), you will write `FA_FloppyO` in a string:
 ```nim
 ...
 if igButton("Open Link " & FA_ExternalLink):
