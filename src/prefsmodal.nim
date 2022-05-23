@@ -181,6 +181,7 @@ proc drawPrefsModal*(app: var App) =
         if alignCount > result: result = alignCount+margin
       else:
         if name.len > result: result = name.len+margin
+
   var close = false
 
   igSetNextWindowPos(igGetMainViewport().getCenter(), Always, igVec2(0.5f, 0.5f))
@@ -204,13 +205,18 @@ proc drawPrefsModal*(app: var App) =
 
     igSameLine()
 
-    centerCursorX(igCalcTextSize("Reset").x, 1, igGetWindowPos().x) 
+    # Right aling button
+    igSetCursorPosX(igGetCurrentWindow().size.x - (igCalcTextSize("Reset").x + (igGetStyle().framePadding.x * 2)) - igGetStyle().windowPadding.x)
     if igButton("Reset"):
       igOpenPopup("Reset?")
 
+    igSetNextWindowPos(igGetMainViewport().getCenter(), Always, igVec2(0.5f, 0.5f))
+
     if igBeginPopupModal("Reset?", flags = makeFlags(AlwaysAutoResize)):
+      igPushTextWrapPos(250)
       igTextWrapped("Are you sure you want to reset the preferences?\nYou won't be able to undo this action")
-      
+      igPopTextWrapPos()
+
       if igButton("Yes"):
         close = true
         app.prefs.overwrite()

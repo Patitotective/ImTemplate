@@ -11,7 +11,7 @@ Template for making a single-windowed (or not) Dear ImGui application in Nim.
 - Updateable AppImage support (with [gh-releases-zsync](https://github.com/AppImage/AppImageSpec/blob/master/draft.md#github-releases)).
 - Simple data resources support.
 - GitHub workflow for building and uploading the AppImage and exe to the last release.
-(To run NimGL in Linux you might need some libraries `sudo apt install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl-dev`)
+(To use NimGL in Ubuntu you might need some libraries `sudo apt install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl-dev`)
 
 ## Files Structure
 - `README.md`: Project's description.

@@ -16,6 +16,7 @@ requires "nimgl >= 1.3.2"
 requires "chroma >= 0.2.4"
 requires "niprefs >= 0.2.2"
 requires "stb_image >= 2.5"
+requires "mathexpr >= 1.3.2"
 requires "https://github.com/Patitotective/ImStyle >= 0.1.0"
 
 task buildApp, "Build the application":

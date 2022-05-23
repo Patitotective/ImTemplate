@@ -1,7 +1,7 @@
-import std/[strformat, strutils, sequtils, strscans, tables, math, re]
+import std/[strformat, strutils, sequtils, strscans, tables, re]
 
 import nimgl/imgui
-import honeycomb
+import mathexpr
 
 type
   Cell* = tuple[row, col: int]
@@ -18,38 +18,12 @@ import utils
 
 const upperLetters = {'A'..'Z'}.toSeq()
 
-# Arithmetic expressions parser
-func processOp(input: seq[string]): float =
-  if input.len < 3: return input[0].parseFloat()
-  case input[1]:
-  of "+": return input[0].parseFloat() + processOp(input[2..^1])
-  of "-": return input[0].parseFloat() - processOp(input[2..^1])
-  of "*": return input[0].parseFloat() * processOp(input[2..^1])
-  of "/": return input[0].parseFloat() / processOp(input[2..^1])
-  of "%": return input[0].parseFloat().mod(processOp(input[2..^1]))
-  of "^": return input[0].parseFloat().pow(processOp(input[2..^1]))
-
-template defineBinOp(parseOp: Parser[string]) =
-  let right = ((padding >> parseOp << padding) & prevt.asString).many().flatten
-  prevt = (prevt.asString & right).map(processOp)
-
-proc evalArithm*(input: string): ParseResult[float] = 
-  var expression = fwdcl[float]()
-  let
-    padding = regex(r"\s*")
-    number  = (digit.atLeast(1) & (c('.') & digit.atLeast(1)).optional).join.map(parseFloat)
-    parens  = c('(') >> padding >> expression << padding << c(')')
-    operand = number | parens
-  var prevt = operand
-
-  defineBinOp c("^")
-  defineBinOp c("*/%")
-  defineBinOp c("+-")
-
-  expression.become(padding >> prevt << padding)
-
-  let parser = expression << eof.desc("valid expression")
-  result = parser.parse(input)
+proc evalFormula*(input: string): (bool, float) = 
+  let e = newEvaluator()
+  try:
+    result = (true, e.eval(input))
+  except ValueError:
+    result = (false, 0d)
 
 # https://github.com/ocornut/imgui/issues/589#issuecomment-238358689
 proc igIsItemActivePreviousFrame(): bool = 
@@ -57,27 +31,24 @@ proc igIsItemActivePreviousFrame(): bool =
   result = context.activeIdPreviousFrame == context.lastItemData.id
 
 proc initSpreadsheet*(label: cstring, rowMax, colMax: int, flags: ImGuiTableFlags): Spreadsheet = 
-  Spreadsheet(label: label, rowMax: rowMax, colMax: colMax, flags: flags, selectedCell: (-1, -1))
-
-proc findCellsId(input: string): seq[string] =  
-  input.findAll(re"[A-Za-z]\d+")
+  Spreadsheet(label: label, rowMax: rowMax, colMax: colMax, flags: flags, selectedCell: (-1, -1))  
 
 proc parseCell(input: string): Cell = 
-  let (ok, colLetter, row) = input.scanTuple("$c$i")
-  let col = upperLetters.find(colLetter.toUpperAscii())
-
-  if row < 0 or col < 0:
-    result = (-1, -1)
+  let (ok, col, row) = input.scanTuple("$c$i")
+  if ok:
+    result = (row, upperLetters.find(col.toUpperAscii()))
   else:
-    result = (row-1, col)
+    result = (-1, -1)
 
-proc replaceCellsId(self: var Spreadsheet, input: string, parent: Cell): tuple[cells: seq[Cell], output: string] = 
+proc replaceCellsId(self: var Spreadsheet, input: string, calledFrom: Cell): tuple[cells: seq[Cell], output: string] = 
   result.output = input
-  for id in input.findCellsId():
+  for id in input.findAll(re"[A-Za-z]\d+"): # Find IDs
     let cell = id.parseCell()
     result.cells.add cell
 
-    if cell.row notin 0..self.rowMax or cell.col notin 0..self.colMax or cell == parent:
+    # If the row or cell is out of the range or the cell is referencing the cell it was calledFrom
+    # Don't replace anything, return the input
+    if cell.row notin 0..self.rowMax or cell.col notin 0..self.colMax or cell == calledFrom:
       result.output = input
       return
 
@@ -86,56 +57,41 @@ proc replaceCellsId(self: var Spreadsheet, input: string, parent: Cell): tuple[c
     else:
       result.output = result.output.replace(id, self.cells[cell].text)
 
-proc updateCell(self: var Spreadsheet, cell: Cell, parent: Cell = (-1, -1)) = 
-  let parent = if parent == (-1, -1): self.selectedCell else: parent
+proc updateCell(self: var Spreadsheet, cell: Cell) = 
   let formula = self.cells[cell].formula
 
-  echo cell
-
   # Remove cell from all its parents
+  # And reset (clean) the parents seq
   for parent in self.cells[cell].parents:
-    echo "\tRemoving ", parent, " parent"
     self.cells[parent].children.remove(cell)
 
   self.cells[cell].parents.reset()
 
   if formula.len > 1 and formula[0] == '=': 
-    echo "\tFormula: ", formula
-    let (cellsInFormula, replacedFormula) = self.replaceCellsId(formula, parent)
-    echo "\tReplaced cells in formula: ", replacedFormula
-    let exprResult = evalArithm(replacedFormula[1..^1])
+    let (cellsInFormula, replacedFormula) = self.replaceCellsId(formula, cell)
+    let (success, result) = evalFormula(replacedFormula[1..^1])
 
-    if exprResult.kind == ParseResultKind.success:
-      echo "\tValid formula: ", exprResult
-      self.cells[cell].text = $exprResult.value
+    if success:
+      self.cells[cell].text = $result
       
-      # Add parents and children
+      # Make this cell children of all the cellsInFormula
+      # And add all the cellsInFormula as parents to this cell
       for parent in cellsInFormula:
-        if parent != self.selectedCell and parent notin self.cells[cell].parents:
-          echo "\tNew parent: ", parent
-          self.cells[cell].parents.add parent
+        # To not add the cell to itself
+        if parent != cell:
           self.cells[parent].children.add cell
+          self.cells[cell].parents.add parent
 
-    else:
-      echo "\tInvalid formula: ", exprResult
+    else: # Invalid formula
       self.cells[cell].text = formula
-
-  else:
-    echo "\tNot a formula"
+  else: # Not a formula
     self.cells[cell].text = formula
 
-  echo "\t", self.cells[cell]
-
+  # Update children
   for child in self.cells[cell].children:
-    echo "\tUpdating ", child, " from ", cell
-    self.updateCell(child, child)
+    self.updateCell(child)
 
 proc draw*(self: var Spreadsheet) = 
-  if igButton("Echo"):
-    echo "Editing: ", self.editing
-    echo "Selected: ", self.selectedCell
-    echo "\t", self.cells[self.selectedCell], "\n"
-
   # One more column because of the row numbers column
   if igBeginTable(self.label, int32 self.colMax+1, self.flags):
     igTableSetupScrollFreeze(1, 1)
@@ -152,7 +108,7 @@ proc draw*(self: var Spreadsheet) =
       
       # Row number
       igTableNextColumn()
-      igTableHeader(cstring $(row + 1))
+      igTableHeader(cstring $row)
 
       # Set background white and the text black
       igTableSetBgColor(RowBg0, igGetColorU32(TableRowBgAlt))
@@ -161,7 +117,7 @@ proc draw*(self: var Spreadsheet) =
       for col in 0..<self.colMax:
         let cell = (row, col)
         if cell notin self.cells:
-          self.cells[cell] = ("", newString(32), "", @[], @[])
+          self.cells[cell] = ("", newString(100), "", @[], @[])
 
         igTableNextColumn()
 
@@ -171,10 +127,11 @@ proc draw*(self: var Spreadsheet) =
         var inputTextDisabled = false
         if not self.editing or self.selectedCell != cell:
           inputTextDisabled = true
-          self.cells[cell].buffer[0..self.cells[cell].text.high] = self.cells[cell].text
+          # When a cell is disabled, displaye the cell's text
+          self.cells[cell].buffer.pushString(self.cells[cell].text)
           igPushItemFlag(ImGuiItemFlags.Disabled, true)
-        else:
-          self.cells[cell].buffer[0..self.cells[cell].formula.high] = self.cells[cell].formula
+        else: # When a cell is being edited (enabled) display the formula
+          self.cells[cell].buffer.pushString(self.cells[cell].formula)
 
         # If the selected cell is the current
         # Push border
@@ -183,18 +140,14 @@ proc draw*(self: var Spreadsheet) =
           igPushStyleColor(Border, igGetColorU32(BorderShadow))
 
         igSetNextItemWidth(70)
-        if igInputText(cstring &"##{row}{col}", self.cells[cell].buffer.cstring, 32):
-          if not inputTextDisabled:
+        if igInputText(cstring &"##{row}{col}", self.cells[cell].buffer.cstring, 100):
+          if not inputTextDisabled: # Update the formula
             self.cells[cell].formula = self.cells[cell].buffer.cleanString()
-
-          echo cell
-          echo "\t", inputTextDisabled
-          echo "\t", self.cells[cell]
 
         # If pressed enter
         # See https://github.com/ocornut/imgui/issues/589#issuecomment-238358689
         if igIsItemActivePreviousFrame() and not igIsItemActive() and igIsKeyPressedMap(ImGuiKey.Enter):
-          self.updateCell(cell)
+          self.updateCell(self.selectedCell)
           self.editing = false
 
         # Pop border
@@ -219,6 +172,7 @@ proc draw*(self: var Spreadsheet) =
 
             self.editing = false
             self.selectedCell = cell
+
 
       igPopStyleColor()
 

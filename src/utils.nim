@@ -4,7 +4,7 @@ import niprefs
 import stb_image/read as stbi
 import nimgl/[imgui, glfw, opengl]
 
-import spreadsheet, icons
+import spreadsheet
 
 export enumutils
 
@@ -20,11 +20,25 @@ type
     radius*: float32
     hovered*: bool
 
-
   Action* = object
     pos*: ImVec2
     kind*: ActionKind
     radius*: float32
+
+  SettingTypes* = enum
+    Input # Input text
+    Check # Checkbox
+    Slider # Int slider
+    FSlider # Float slider
+    Spin # Int spin
+    FSpin # Float spin
+    Combo
+    Radio # Radio button
+    Color3 # Color edit RGB
+    Color4 # Color edit RGBA
+    Section
+
+  ImageData* = tuple[image: seq[byte], width, height: int]
 
   App* = ref object
     win*: GLFWWindow
@@ -73,21 +87,6 @@ type
     dragFloat*, dragFloat2*: float32
     sliderFloat*, sliderFloat2*: float32
     radioCurrent*, comboCurrent*, listCurrent*: int32
-
-  SettingTypes* = enum
-    Input # Input text
-    Check # Checkbox
-    Slider # Int slider
-    FSlider # Float slider
-    Spin # Int spin
-    FSpin # Float spin
-    Combo
-    Radio # Radio button
-    Color3 # Color edit RGB
-    Color4 # Color edit RGBA
-    Section
-
-  ImageData* = tuple[image: seq[byte], width, height: int]
 
 proc newCircle*(pos: ImVec2, radius: float32): Circle = 
   Circle(pos: pos, radius: radius)
@@ -183,17 +182,8 @@ proc igHSV*(h, s, v: float32, a: float32 = 1f): ImColor =
 proc igGetContentRegionAvail*(): ImVec2 = 
   igGetContentRegionAvailNonUDT(result.addr)
 
-proc igGetWindowContentRegionMax*(): ImVec2 = 
-  igGetWindowContentRegionMaxNonUDT(result.addr)
-
 proc igGetWindowPos*(): ImVec2 = 
   igGetWindowPosNonUDT(result.addr)
-
-proc igGetItemRectMin*(): ImVec2 = 
-  igGetItemRectMinNonUDT(result.addr)
-
-proc igGetItemRectMax*(): ImVec2 = 
-  igGetItemRectMaxNonUDT(result.addr)
 
 proc igCalcTextSize*(text: cstring, text_end: cstring = nil, hide_text_after_double_hash: bool = false, wrap_width: float32 = -1.0'f32): ImVec2 = 
   igCalcTextSizeNonUDT(result.addr, text, text_end, hide_text_after_double_hash, wrap_width)
@@ -205,10 +195,6 @@ proc getCenter*(self: ptr ImGuiViewport): ImVec2 =
   getCenterNonUDT(result.addr, self)
 
 proc centerCursorX*(width: float32, align: float = 0.5f, availWidth: float32 = igGetContentRegionAvail().x) = 
-  # let style = igGetStyle()
-  
-  # size.x += style.framePadding.x * 2
-
   let off = (availWidth - width) * align
   
   if off > 0:
@@ -269,31 +255,6 @@ proc openURL*(url: string) =
     discard execShellCmd("start " & url)
   else:
     discard execShellCmd("xdg-open " & url)
-
-proc igAddUnderLine*(col: uint32) = 
-  var 
-    min = igGetItemRectMin()
-    max = igGetItemRectMax()
-
-  min.y = max.y
-  igGetWindowDrawList().addLine(min, max, col, 1f)
-
-proc igTextURL*(name: string, url: string, sameLineBefore, sameLineAfter: bool = true) = 
-  let style = igGetStyle()
-  if sameLineBefore: igSameLine(0f, style.itemInnerSpacing.x)
-
-  igPushStyleColor(ImGuiCol.Text, igGetColorU32(CheckMark))
-  igText(name)
-  igPopStyleColor()
-
-  if igIsItemHovered():
-    if igIsMouseClicked(ImGuiMouseButton.Left):
-      url.openURL()
-
-    igAddUnderLine(igGetColorU32(CheckMark))
-    igSetTooltip(cstring url & " " & FA_ExternalLink)
-
-  if sameLineAfter: igSameLine(0f, style.itemInnerSpacing.x)
 
 proc removeInside*(text: string, open, close: char): tuple[text: string, inside: string] = 
   ## Remove the characters inside open..close from text, return text and the removed characters
@@ -356,3 +317,9 @@ proc remove*[T](s: var seq[T], val: T) =
   for i in s.high.countDown(0):
     if s[i] == val:
       s.delete(i)
+
+proc pushString*(str: var string, val: string) = 
+  if val.len < str.len:
+    str[0..val.len] = val & '\0'
+  else:
+    str[0..str.high] = val[0..str.high]
