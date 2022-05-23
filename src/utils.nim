@@ -47,8 +47,7 @@ type
     cache*: PObjectType # Settings cache
     config*: PObjectType # Prefs table
 
-    # Variables
-    
+    # Variables    
     # Counter
     counter*: int
     # Temperature Converter

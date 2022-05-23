@@ -1,12 +1,9 @@
 name: Upload builds to release
 
 on:
-  workflow_dispatch: 
+  # workflow_dispatch: 
   release: 
     types: [released, prereleased]
-  # push:
-    # tags:
-      # - '*'
 
 jobs:
   build-appimage:
