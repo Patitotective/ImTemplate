@@ -196,6 +196,8 @@ To access `alphaColor` you will need to do `app.prefs["colors/alphaColor"]`.
 ## Building
 To build your app you may want to run `nimble buildApp` task.
 
+_Note: Unfortunately on Window most of the times Nim binaries are flagged as virus, see https://github.com/nim-lang/Nim/issues/17820._
+
 ### Bundling
 To bundle your app resources inside the compiled binary, you only need to go to `resourcesdata.nim` file and define their paths in the `resources` array.  
 After that `resourcesdata` is imported in `main.nim`. So when you compile it, it statically reads those files and creates a table with `[path, data]`.  
