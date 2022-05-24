@@ -146,13 +146,13 @@ proc drawFlightBooker(app: var App) =
   let unusedOpen = true # Passing this parameter creates a close button
   igSetNextWindowPos(igGetMainViewport().getCenter(), Always, igVec2(0.5f, 0.5f))
   
-  if igBeginPopupModal("Succesfully Booked###booked", unusedOpen.unsafeAddr, flags = makeFlags(ImGuiWindowFlags.NoResize, NoMove)):
+  if igBeginPopupModal("Succesfully Booked###booked", unusedOpen.unsafeAddr, flags = makeFlags(AlwaysAutoResize, NoMove)):
     igPushTextWrapPos(250)
 
-    if app.currentFlight == 0: # one-way flight
-      igTextWrapped(cstring &"You have booked a one-way flight on {app.startDate}")
-    elif app.currentFlight == 1: # return flight
-      igTextWrapped(cstring &"You have booked a one-way flight departing on {app.startDate} and {app.returnDate}")
+    if app.currentFlight == 1: # return flight
+      igTextWrapped(cstring &"You have booked a return flight departing on {app.startDate} and returning on {app.returnDate}.")
+    elif app.currentFlight == 0: # one-way flight
+      igTextWrapped(cstring &"You have booked a one-way flight on {app.startDate}.")
 
     igPopTextWrapPos()
     igEndPopup()
