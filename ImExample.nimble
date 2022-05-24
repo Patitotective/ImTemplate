@@ -2,7 +2,7 @@ import std/[strutils, os]
 
 # Package
 
-version          = "0.2.0"
+version          = "0.2.1"
 author           = "Patitotective"
 description      = "A new awesome Dear ImGui application"
 license          = "MIT"
