@@ -40,7 +40,8 @@ task "build", "Build AppImage":
       "arch", arch
     ]
   )
-  copyFile(config["svgIconPath"].getString(), "AppDir" / &"{name}.svg")
+  copyFile(config["iconPath"].getString(), "AppDir/.DirIcon")
+  copyFile(config["svgIconPath"].getString(), &"AppDir/{name}.svg")
   if "appstreamPath" in config:
     createDir("AppDir/usr/share/metainfo")
     copyFile(config["appstreamPath"].getString(), &"AppDir/usr/share/metainfo/{name}.appdata.xml")
