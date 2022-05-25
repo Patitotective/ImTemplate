@@ -1,4 +1,4 @@
-# <img title="Icon" width=50 height=50 src="https://github.com/Patitotective/ImTemplate/blob/main/assets/icon.svg"></img> ImTemplate
+# <img title="Icon" width=50 height=50 src="https://github.com/Patitotective/ImTemplate/blob/main/assets/icon.png"></img> ImTemplate
 Template for making a single-windowed (or not) Dear ImGui application in Nim.
 
 ![Main Window](https://user-images.githubusercontent.com/79225325/169912779-7027011e-1157-4ddd-9ef8-56ceeb82037d.png)
