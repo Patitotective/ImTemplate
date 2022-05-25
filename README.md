@@ -28,15 +28,15 @@ This template implements the [7GUIs tasks](https://eugenkiss.github.io/7guis/tas
 - `config.niprefs`: Application's configuration (see [Config](#config)).
 - `ImExample.nimble`: [Nimble file](https://github.com/nim-lang/nimble#creating-packages).
 - `assets`: 
-	- `icon.png`, `icon.svg`: App icons.
-	- `style.niprefs`: App style (using [ImStyle](https://github.com/Patitotective/ImStyle)).
-	- `Cousine-Regular.ttf`, `Karla-Regular.ttf`, `Roboto-Regular.ttf`, `ProggyVector Regular.ttf`: Multiple fonts so you can choose the one you like the most.
-	- `forkawesome-webfont.ttf`: ForkAwesome icon font (see https://forkaweso.me/).
+  - `icon.png`, `icon.svg`: App icons.
+  - `style.niprefs`: App style (using [ImStyle](https://github.com/Patitotective/ImStyle)).
+  - `Cousine-Regular.ttf`, `Karla-Regular.ttf`, `Roboto-Regular.ttf`, `ProggyVector Regular.ttf`: Multiple fonts so you can choose the one you like the most.
+  - `forkawesome-webfont.ttf`: ForkAwesome icon font (see https://forkaweso.me/).
 - `src`:
-	- `icons.nim`: Helper module with [ForkAwesome](https://forkaweso.me) icons unicode points.
-	- `utils.nim`: Useful procedures, general types or anything used by more than one module.
-	- `spreadsheet.nim`: [7GUIs Cells task](https://eugenkiss.github.io/7guis/tasks#cells) implementation.
-	- `prefsmodal.nim`: Draw the preferences modal (called in `main.nim`)
+  - `icons.nim`: Helper module with [ForkAwesome](https://forkaweso.me) icons unicode points.
+  - `utils.nim`: Useful procedures, general types or anything used by more than one module.
+  - `spreadsheet.nim`: [7GUIs Cells task](https://eugenkiss.github.io/7guis/tasks#cells) implementation.
+  - `prefsmodal.nim`: Draw the preferences modal (called in `main.nim`)
 
 ## Icon Font
 ImTemplate uses [ForkAwesome](https://forkaweso.me)'s icon font to be able to display icon in labes, to do it you only need to import [`icons.nim`](https://github.com/Patitotective/ImTemplate/blob/main/src/icons.niprefs) (where the unicode points for each icon are defined), browse https://forkaweso.me/Fork-Awesome/icons, choose the one you want and, for example, if you want to use [`fa-floppy-o`](https://forkaweso.me/Fork-Awesome/icon/floppy-o/), you will write `FA_FloppyO` in a string:
@@ -102,7 +102,7 @@ settings=>
     max=100
     flags="EnterReturnsTrue" # See https://nimgl.dev/docs/imgui.html#ImGuiInputTextFlags
     help="Press enter to save"
-	...
+  ...
 ```
 
 ### About Modal
@@ -224,9 +224,8 @@ If you included the `ghRepo` key in the config file, it will generate also an `A
 If you included the `appstreamPath` key, it will get copied to `AppDir/usr/share/shareinfo/{config["name"]}.appdata.xml` (see https://docs.appimage.org/packaging-guide/optional/appstream.html).
 
 ### Creating a release
-ImTemplate has a [`build.yml` workflow](https://github.com/Patitotective/ImTemplate/blob/main/.github/workflows/build.yml) that automatically when you publish a release or a prelease, builds an AppImage and an `.exe` file to then upload them as assets to the release.  
+ImTemplate has a [`build.yml` workflow](https://github.com/Patitotective/ImTemplate/blob/main/.github/workflows/build.yml) that automatically when you publish a release, builds an AppImage and an `.exe` file to then upload them as assets to the release.  
 This can take several minutes.  
-_Advice: publish your release as a prerelease and wait until the assets are uploaded to fully release it._
 
 ## Generated from ImTemplate
 Apps using this template:

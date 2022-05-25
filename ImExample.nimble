@@ -1,5 +1,3 @@
-import std/[strutils, os]
-
 # Package
 
 version          = "0.2.1"

@@ -93,6 +93,46 @@ proc newCircle*(pos: ImVec2, radius: float32): Circle =
 proc newAction*(pos: ImVec2, kind: ActionKind, radius: float32): Action = 
   Action(pos: pos, kind: kind, radius: radius)
 
+proc `+`*(vec1, vec2: ImVec2): ImVec2 = 
+  ImVec2(x: vec1.x + vec2.x, y: vec1.y + vec2.y)
+
+proc `-`*(vec1, vec2: ImVec2): ImVec2 = 
+  ImVec2(x: vec1.x - vec2.x, y: vec1.y - vec2.y)
+
+proc `*`*(vec1, vec2: ImVec2): ImVec2 = 
+  ImVec2(x: vec1.x * vec2.x, y: vec1.y * vec2.y)
+
+proc `/`*(vec1, vec2: ImVec2): ImVec2 = 
+  ImVec2(x: vec1.x / vec2.x, y: vec1.y / vec2.y)
+
+proc `+`*(vec: ImVec2, val: float32): ImVec2 = 
+  ImVec2(x: vec.x + val, y: vec.y + val)
+
+proc `-`*(vec: ImVec2, val: float32): ImVec2 = 
+  ImVec2(x: vec.x - val, y: vec.y - val)
+
+proc `*`*(vec: ImVec2, val: float32): ImVec2 = 
+  ImVec2(x: vec.x * val, y: vec.y * val)
+
+proc `/`*(vec: ImVec2, val: float32): ImVec2 = 
+  ImVec2(x: vec.x / val, y: vec.y / val)
+
+proc `+=`*(vec1: var ImVec2, vec2: ImVec2) = 
+  vec1.x += vec2.x
+  vec1.y += vec2.y
+
+proc `-=`*(vec1: var ImVec2, vec2: ImVec2) = 
+  vec1.x -= vec2.x
+  vec1.y -= vec2.y
+
+proc `*=`*(vec1: var ImVec2, vec2: ImVec2) = 
+  vec1.x *= vec2.x
+  vec1.y *= vec2.y
+
+proc `/=`*(vec1: var ImVec2, vec2: ImVec2) = 
+  vec1.x /= vec2.x
+  vec1.y /= vec2.y
+
 # To be able to print large holey enums
 macro enumFullRange*(a: typed): untyped =
   newNimNode(nnkBracket).add(a.getType[1][1..^1])

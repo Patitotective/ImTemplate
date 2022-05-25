@@ -3,7 +3,7 @@ name: Upload builds to release
 on:
   # workflow_dispatch: 
   release: 
-    types: [released, prereleased]
+    types: [released]
 
 jobs:
   build-appimage:
