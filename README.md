@@ -165,7 +165,7 @@ To access `combo`'s value in your program you should do `app.prefs["combo"]`
 - `Radio`: Radio button.
 - `Color3`: Color edit RGB.
 - `Color4`: Color edit RGBA.
-- `Section`: See (`Section`)[#section]
+- `Section`: See [`Section`](#section)
 
 #### `Section`
 
