@@ -17,10 +17,19 @@ requires "stb_image >= 2.5"
 requires "mathexpr >= 1.3.2"
 requires "https://github.com/Patitotective/ImStyle >= 0.1.0"
 
+let outPath =
+  when defined(Windows):
+    when defined(i386):
+      namedBin["main"] & "_x86" & ".exe"
+    elif defined(amd64):
+      namedBin["main"] & "_x64" & ".exe"
+  else:
+    namedBin["main"]
+
 task buildApp, "Build the application":
   exec "nimble install -d -y"
-  exec "nim cpp -d:release --app:gui " & "-o:" & namedBin["main"] & " main"
+  exec "nim cpp -d:release --app:gui " & "-o:" & outPath & " main"
 
 task runApp, "Build and run the application":
   exec "nimble install -d -y"
-  exec "nim cpp -r -d:release --app:gui " & "-o:" & namedBin["main"] & " main"
+  exec "nim cpp -r -d:release --app:gui " & "-o:" & outPath & " main"
