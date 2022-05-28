@@ -26,35 +26,28 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           asset_paths: '["AppDir/*.AppImage", "AppDir/*.zsync"]'
-  build-win64: 
-    name: Build and upload 64 bit .exe
+  build-win: 
+    name: Build and upload 32 and 64 bit exe
     runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v2
       - uses: iffy/install-nim@v4.1.1
-      - name: Build .exe
-        run: |
-          nimble buildApp
-      - name: Upload release binaries
-        uses: alexellis/upload-assets@0.2.2
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          asset_paths: '["*.exe"]'
-  build-win32: 
-    name: Build and upload 32 bit .exe
-    runs-on: windows-latest
 
-    steps:
-      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Configure build for x86
+        uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x86
-      - uses: actions/checkout@v2
-      - uses: iffy/install-nim@v4.1.1
-      - name: Build .exe
-        run: |
-          nimble buildApp
+
+      - run: nimble buildApp
+
+      - name: Configure build for ARM64
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86_64
+
+      - run: nimble buildApp
+          
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:
