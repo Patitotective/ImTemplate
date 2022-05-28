@@ -566,7 +566,7 @@ proc drawMain(app: var App) = # Draw the main window
   igSetNextWindowPos(viewport.workPos)
   igSetNextWindowSize(viewport.workSize)
 
-  if igBegin(app.config["name"].getString().cstring, flags = makeFlags(ImGuiWindowFlags.NoResize, NoDecoration, NoMove)):
+  if igBegin(cstring app.config["name"].getString(), flags = makeFlags(ImGuiWindowFlags.NoResize, NoDecoration, NoMove)):
     igText(FA_Info & " Application average %.3f ms/frame (%.1f FPS)", 1000f / igGetIO().framerate, igGetIO().framerate)
    
     if igBeginTabBar("tabs"): 

@@ -1,7 +1,7 @@
 name: Upload builds to release
 
 on:
-  # workflow_dispatch: 
+  workflow_dispatch: 
   release: 
     types: [released]
 
@@ -26,11 +26,31 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           asset_paths: '["AppDir/*.AppImage", "AppDir/*.zsync"]'
-  build-exe: 
-    name: Build and upload .exe
+  build-win64: 
+    name: Build and upload 64 bit .exe
     runs-on: windows-latest
 
     steps:
+      - uses: actions/checkout@v2
+      - uses: iffy/install-nim@v4.1.1
+      - name: Build .exe
+        run: |
+          nimble install -d -y
+          nimble buildApp
+      - name: Upload release binaries
+        uses: alexellis/upload-assets@0.2.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          asset_paths: '["*.exe"]'
+  build-win32: 
+    name: Build and upload 32 bit .exe
+    runs-on: windows-latest
+
+    steps:
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86
       - uses: actions/checkout@v2
       - uses: iffy/install-nim@v4.1.1
       - name: Build .exe
