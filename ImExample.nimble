@@ -20,9 +20,9 @@ requires "https://github.com/Patitotective/ImStyle >= 0.1.0"
 let outPath =
   when defined(Windows):
     when defined(i386):
-      namedBin["main"] & "_x86" & ".exe"
+      namedBin["main"] & "-_x86" & ".exe"
     elif defined(amd64):
-      namedBin["main"] & "_x64" & ".exe"
+      namedBin["main"] & "-_x86_64" & ".exe"
   else:
     namedBin["main"]
 
