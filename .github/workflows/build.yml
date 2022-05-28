@@ -17,9 +17,7 @@ jobs:
         run: |
           sudo apt-get install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl-dev
       - name: Build AppImage
-        run: |
-          nimble install -d -y
-          nake build
+        run: nake build
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:
@@ -34,9 +32,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: iffy/install-nim@v4.1.1
       - name: Build .exe
-        run: |
-          nimble install -d -y
-          nimble buildApp
+        run: nimble buildApp
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:
@@ -55,8 +51,8 @@ jobs:
       - uses: iffy/install-nim@v4.1.1
       - name: Build .exe
         run: |
-          nimble install -d -y
           nimble buildApp
+          powershell.exe -command "Get-ChildItem *.exe | Rename-Item -NewName { $_.Name -replace '.exe','_x86.exe' }"
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:
