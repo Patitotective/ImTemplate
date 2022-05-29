@@ -1,6 +1,6 @@
 # Package
 
-version          = "0.2.2"
+version          = "0.3.0"
 author           = "Patitotective"
 description      = "A new awesome Dear ImGui application"
 license          = "MIT"
@@ -19,7 +19,7 @@ requires "https://github.com/Patitotective/ImStyle >= 0.1.0"
 import std/[strformat, os]
 
 let arch = if existsEnv("ARCH"): getEnv("ARCH") else: "amd64"
-let outPath = if existsEnv("OUTPATH"): getEnv("OUTPATH") else: &"{namedBin[\"main\"]}-{version}-{arch}"
+let outPath = if existsEnv("OUTPATH"): getEnv("OUTPATH") else: &"{namedBin[\"main\"]}-{version}-{arch}" & (when defined(Windows): ".exe" else: "")
 let flags = getEnv("FLAGS")
 
 task buildApp, "Build the application":
