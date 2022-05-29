@@ -120,7 +120,6 @@ Using the information from the config file, ImTemplate creates a simple about mo
 
 (AppImage)
 - `ghRepo`: GitHub repo to fetch releases from (including this key will generate an `AppImage.zsync` file, include it in your releases for [updates](https://docs.appimage.org/packaging-guide/optional/updates.html#using-appimagetool), skip it to disable).
-- `arch`: AppImage architechture (see https://docs.appimage.org/reference/desktop-integration.html#id2)
 - `appstreamPath`: Path to the [AppStream metadata](https://docs.appimage.org/packaging-guide/optional/appstream.html) (optional).
 
 (Paths)

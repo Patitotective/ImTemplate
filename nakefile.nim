@@ -18,17 +18,20 @@ const
   X-AppImage-Version=$version
   X-AppImage-Arch=$arch
   """.dedent()
-let
-  config = configPath.readPrefs()
+let config {.compileTime.} = configPath.readPrefs()
+const
   name = config["name"].getString() 
-  arch = if "arch" in config: config["arch"].getString() else: "x86_64"
+  version = config["version"].getString()
+  appimagePath = &"{name}-{version}-{arch}.AppImage"
+
+let arch = if existsEnv("ARCH"): getEnv("ARCH") else: "amd64"
 
 task "build", "Build AppImage":
   shell "nimble install -d -y"
 
   discard existsOrCreateDir("AppDir")
   if "AppDir/AppRun".needsRefresh("main.nim"):
-    shell "nim cpp -d:release -d:appImage --app:gui --out:AppDir/AppRun main"
+    shell &"nim cpp -d:release -d:appImage --app:gui --cpu:{arch} --out:AppDir/AppRun main"
 
   writeFile(
     &"AppDir/{name}.desktop", 
@@ -48,26 +51,22 @@ task "build", "Build AppImage":
 
   var appimagetoolPath = "appimagetool"
   if not silentShell("Checking for appimagetool", appimagetoolPath, "--help"):
-      withDir "AppDir":
-        appimagetoolPath = "../appimagetool-x86_64.AppImage"
-        if not fileExists(appimagetoolPath):
-          direSilentShell &"Dowloading {appimagetoolPath}", "wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O ", appimagetoolPath
+      appimagetoolPath = "appimagetool-x86_64.AppImage"
+      if not fileExists(appimagetoolPath):
+        direSilentShell &"Dowloading {appimagetoolPath}", "wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O ", appimagetoolPath
         shell "chmod +x", appimagetoolPath
 
-  withDir "AppDir":
-    if "ghRepo" in config:
-      echo "Building updateable AppImage"
-      let ghInfo = config["ghRepo"].getString().split('/')
-      direShell appimagetoolPath, "-u", &"\"gh-releases-zsync|{ghInfo[0]}|{ghInfo[1]}|latest|{name}-*.AppImage.zsync\"", CurDir, &"{name}-{arch}.AppImage"
-    else:
-      echo &"ghRepo key not in {configPath}. Skipping updateable AppImage"
-      direShell appimagetoolPath, CurDir
-
-  echo "Succesfully built AppImage at AppDir/"
+  if "ghRepo" in config:
+    echo "Building updateable AppImage"
+    let ghInfo = config["ghRepo"].getString().split('/')
+    direShell appimagetoolPath, "-u", &"\"gh-releases-zsync|{ghInfo[0]}|{ghInfo[1]}|latest|{name}-*-{arch}.AppImage.zsync\"", "AppDir", appimagePath
+  else:
+    echo &"ghRepo key not in {configPath}. Skipping updateable AppImage"
+    direShell appimagetoolPath, "AppDir", appimagePath
 
 task "run", "Build and run AppImage":
   if "AppDir/AppRun".needsRefresh("main.nim"):
     runTask("build")
 
-  shell "chmod a+x AppDir/*.AppImage" # Make it executable
-  shell "AppDir/*.AppImage"
+  shell &"chmod a+x {appimagePath}" # Make it executable
+  shell appimagePath

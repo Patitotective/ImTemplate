@@ -62,7 +62,7 @@ proc updateCell(self: var Spreadsheet, cell: Cell) =
 
   # Remove cell from all its parents
   # And reset (clean) the parents seq
-  for parent in self.cells[cell].parents:
+  for parent in self.cells[cell].parents.mitems:
     self.cells[parent].children.remove(cell)
 
   self.cells[cell].parents.reset()

@@ -98,7 +98,7 @@ proc drawSetting(app: var App, name: string, data: PObjectType, alignCount: Natu
     var currentItem = app.getCacheVal(name, parent)
 
     if currentItem.kind == PInt:
-      currentItem = data["items"][currentItem.getInt()]
+      currentItem = data["items"][int currentItem.getInt()]
 
     if igBeginCombo(cstring "##" & name, currentItem.getString().cstring, flags):
 

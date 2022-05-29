@@ -648,8 +648,8 @@ proc initWindow(app: var App) =
 
     monitors[0].getMonitorPos(monitorX.addr, monitorY.addr)
     app.win.setWindowPos(
-      monitorX + int32((videoMode.width - app.prefs["win/width"].getInt()) / 2), 
-      monitorY + int32((videoMode.height - app.prefs["win/height"].getInt()) / 2)
+      monitorX + int32((videoMode.width - int app.prefs["win/width"].getInt()) / 2), 
+      monitorY + int32((videoMode.height - int app.prefs["win/height"].getInt()) / 2)
     )
   else:
     app.win.setWindowPos(app.prefs["win/x"].getInt().int32, app.prefs["win/y"].getInt().int32)

@@ -7,19 +7,23 @@ on:
 
 jobs:
   build-appimage:
-    name: Build and upload AppImage
+    name: Build and upload amd64 and i386 AppImages
     runs-on: ubuntu-18.04
 
     steps:
       - uses: actions/checkout@v2
       - uses: iffy/install-nim@v4.1.1
       - name: Install x11 dev libraries
-        run: |
-          sudo apt-get install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl-dev
-      - name: Build AppImage
+        run: sudo apt install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl-dev
+      
+      - name: Install libgl1-mesa-dev:i386
+        run: sudo apt install libgl1-mesa-dev:i386
+      
+      - name: Build AppImages
         run: |
           nimble install -d -y
-          nake build
+          ARCH=amd64 nake build
+          ARCH=i386 FLAGS="--passC:\"-m32\" --passL:\"-m32\"" nake build
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:
@@ -27,27 +31,15 @@ jobs:
         with:
           asset_paths: '["AppDir/*.AppImage", "AppDir/*.zsync"]'
   build-win: 
-    name: Build and upload 32 and 64 bit exe
+    name: Build and upload amd64 and i386 exes
     runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v2
       - uses: iffy/install-nim@v4.1.1
-
-      - name: Configure build for x86
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x86
-
-      - run: nimble buildApp
-
-      - name: Configure build for ARM64
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x86_64
-
-      - run: nimble buildApp
-          
+        run: |
+          ARCH=amd64 nake build
+          ARCH=i386 FLAGS="--passC:\"-m32\" --passL:\"-m32\"" nake build
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:
