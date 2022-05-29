@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-appimage:
-    name: Build and upload amd64 and i386 AppImages
+    name: Build and upload amd64 AppImages
     runs-on: ubuntu-18.04
 
     steps:
@@ -15,11 +15,10 @@ jobs:
       - uses: iffy/install-nim@v4.1.1
       - name: Install x11 dev libraries
         run: sudo apt install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl-dev
-
-      - name: Build AppImages
+      - name: Build AppImage
         run: |
           nimble install -d -y
-          ARCH=amd64 nake build
+          nake build
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:
@@ -27,15 +26,14 @@ jobs:
         with:
           asset_paths: '["AppDir/*.AppImage", "AppDir/*.zsync"]'
   build-win: 
-    name: Build and upload amd64 and i386 exes
+    name: Build and upload amd64 exe
     runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v2
       - uses: iffy/install-nim@v4.1.1
-      - name: Bild exes
-        run: |
-          ARCH=amd64 nake build
+      - name: Build exe
+        run: nake build
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:
