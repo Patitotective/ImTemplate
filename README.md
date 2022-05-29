@@ -1,7 +1,9 @@
 # <img title="Icon" width=50 height=50 src="https://github.com/Patitotective/ImTemplate/blob/main/assets/icon.png"></img> ImTemplate
 Template for making a single-windowed (or not) Dear ImGui application in Nim.
 
-![Main Window](https://user-images.githubusercontent.com/79225325/169912779-7027011e-1157-4ddd-9ef8-56ceeb82037d.png)
+![Main Window](https://user-images.githubusercontent.com/79225325/170889620-d1b3ce74-c92d-440c-9144-92b068973651.png)
+
+(Check [ImDemo](https://github.com/Patitotective/ImDemo) for full example)
 
 ## Features
 - Icon font support.
@@ -13,10 +15,6 @@ Template for making a single-windowed (or not) Dear ImGui application in Nim.
 - GitHub workflow for building and uploading the AppImage and `.exe` as assets.
 
 (To use NimGL in Ubuntu you might need some libraries `sudo apt install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl-dev`)
-
-This template implements the [7GUIs tasks](https://eugenkiss.github.io/7guis/tasks) and [Dear ImGui demo](https://github.com/ocornut/imgui#demo)'s basic widgets, showing the basic Dear ImGui usage and a start for creating your own applications.
-
-![Basic Widgets](https://user-images.githubusercontent.com/79225325/169913267-e39b62ba-71ef-48d5-9a5a-917caeded156.png)
 
 ## Files Structure
 - `README.md`: Project's description.
@@ -35,7 +33,6 @@ This template implements the [7GUIs tasks](https://eugenkiss.github.io/7guis/tas
 - `src`:
   - `icons.nim`: Helper module with [ForkAwesome](https://forkaweso.me) icons unicode points.
   - `utils.nim`: Useful procedures, general types or anything used by more than one module.
-  - `spreadsheet.nim`: [7GUIs Cells task](https://eugenkiss.github.io/7guis/tasks#cells) implementation.
   - `prefsmodal.nim`: Draw the preferences modal (called in `main.nim`)
 
 ## Icon Font
@@ -57,7 +54,7 @@ type
     cache*: PObjectType # Settings cache
     config*: PObjectType # Prefs table
 
-    # Variables
+    # Add your variables here
     ...
 ```
 - `win`: GLFW window.
@@ -65,8 +62,6 @@ type
 - `prefs`: App preferences (using [niprefs](https://patitotective.github.io/niprefs/)).
 - `cache`: Preferences modal cache settings (to discard or apply them).
 - `config`: Configuration file (loaded from `config.niprefs`).
-
-You may also want to store the variables your program uses here.
 
 ## Config
 The application's configuration will store information about the app that you may want to change after compiled and before deployed (like the name or version).   
@@ -108,7 +103,7 @@ settings=>
 ### About Modal
 Using the information from the config file, ImTemplate creates a simple about modal.
 
-![About Modal](https://user-images.githubusercontent.com/79225325/169912874-85aa2d4d-caa0-44e6-9f2d-939e845e1f96.png)
+![About Modal](https://user-images.githubusercontent.com/79225325/170889730-8cba620b-3d6d-4574-8228-5c45930821d1.png)
 
 ### Keys Explanation
 - `name`: App name.
@@ -134,10 +129,11 @@ Using the information from the config file, ImTemplate creates a simple about mo
 - `settings`: See [`settings`](#settings).
 
 ### `settings`
-Define the preferences that the user can modify through the preferences modal.  
+Define the preferences that the user can modify through the preferences modal.
+
 These preferences will be stored at `getCacheDir(config["name"])` along with the window size and position using [niprefs](https://patitotective.github.io/niprefs/). To acces them you only need to do `app.prefs["setting"]`
 
-![Prefs Modal](https://user-images.githubusercontent.com/79225325/169912949-97530c98-73d4-44a5-9226-b857a334d6f0.png)
+![Prefs Modal](https://user-images.githubusercontent.com/79225325/170889748-316c4b7a-47d0-4a65-82b3-d4e50b9252ea.png)
 
 Each child key has to have the `type` key, and depending on it the required keys may change so go check [config.niprefs](https://github.com/Patitotective/ImTemplate/blob/main/config.niprefs) to see which keys which types do require.  
 ```nim
@@ -167,8 +163,7 @@ To access `combo`'s value in your program you should do `app.prefs["combo"]`
 - `Section`: See [`Section`](#section)
 
 #### `Section`
-
-![Setting Section](https://user-images.githubusercontent.com/79225325/169912980-dc50574c-1b27-4c78-b6f0-9a3b60447058.png)
+![Setting Section](https://user-images.githubusercontent.com/79225325/170889758-b7845c4a-df3a-4a06-a0c9-e64b0659097e.png)
 
 Section types are useful to group similar settings.  
 It fits the settings at `content` inside a [collapsing header](https://nimgl.dev/docs/imgui.html#igCollapsingHeader%2Ccstring%2CImGuiTreeNodeFlags).
@@ -228,6 +223,7 @@ This can take several minutes.
 
 ## Generated from ImTemplate
 Apps using this template:
+- [ImDemo](https://github.com/Patitotective/ImDemo)
 - [ImPasswordGen](https://github.com/Patitotective/ImPasswordGen)
 - [ImClocks](https://github.com/Patitotective/ImClocks)
 
