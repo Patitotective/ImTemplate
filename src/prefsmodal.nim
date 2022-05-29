@@ -20,7 +20,7 @@ proc drawSetting(app: var App, name: string, data: PObjectType, alignCount: Natu
     else:
       app.cache[name] = val
 
-  let settingType = parseEnum[SettingType](data["type"])
+  let settingType = parseEnum[SettingTypes](data["type"])
   let label = if "display" in data: data["display"].getString() else: name.capitalizeAscii()
   if settingType != Section:
     igText(cstring (label & ": ").alignLeft(alignCount))
@@ -97,7 +97,7 @@ proc drawSetting(app: var App, name: string, data: PObjectType, alignCount: Natu
     var currentItem = app.getCacheVal()
 
     if currentItem.kind == PInt:
-      currentItem = data["items"][currentItem.getInt()]
+      currentItem = data["items"][int currentItem.getInt()]
 
     if igBeginCombo(cstring "##" & name, currentItem.getString().cstring, flags):
 
@@ -161,7 +161,7 @@ proc drawSettings(app: var App, settings: PrefsNode, alignCount: Natural, parent
   assert settings.kind == PObject
 
   for name, data in settings:
-    if parseEnum[SettingType](data["type"]) != Section:
+    if parseEnum[SettingTypes](data["type"]) != Section:
       if parent.len > 0:
         if parent notin app.cache: app.cache[parent] = newPObject()
         if name notin app.cache[parent]:
@@ -175,7 +175,7 @@ proc drawSettings(app: var App, settings: PrefsNode, alignCount: Natural, parent
 proc drawPrefsModal*(app: var App) = 
   proc calcAlignCount(settings: PrefsNode, margin: int = 6): Natural = 
     for name, data in settings:
-      if parseEnum[SettingType](data["type"]) == Section:
+      if parseEnum[SettingTypes](data["type"]) == Section:
         let alignCount = calcAlignCount(data["content"])
         if alignCount > result: result = alignCount+margin
       else:
