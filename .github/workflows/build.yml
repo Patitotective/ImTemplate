@@ -24,7 +24,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
-          asset_paths: '["*.AppImage", "*.zsync"]'
+          asset_paths: '["*-*-*.AppImage", "*-*-*.AppImage.zsync"]'
   build-win: 
     name: Build and upload amd64 exe
     runs-on: windows-latest
