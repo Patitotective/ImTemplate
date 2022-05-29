@@ -77,7 +77,6 @@ categories=["Utility"]
 
 # AppImage
 ghRepo="Patitotective/ImTemplate"
-arch="x86_64"
 
 stylePath="assets/style.niprefs"
 iconPath="assets/icon.png"
