@@ -4,27 +4,9 @@ import niprefs
 import stb_image/read as stbi
 import nimgl/[imgui, glfw, opengl]
 
-import spreadsheet
-
 export enumutils
 
 type
-  Element* = enum
-    Fire, Earth, Air, Water
-
-  ActionKind* = enum
-    Resize, Create
-
-  Circle* = object
-    pos*: ImVec2
-    radius*: float32
-    hovered*: bool
-
-  Action* = object
-    pos*: ImVec2
-    kind*: ActionKind
-    radius*: float32
-
   SettingTypes* = enum
     Input # Input text
     Check # Checkbox
@@ -46,52 +28,6 @@ type
     prefs*: Prefs
     cache*: PObjectType # Settings cache
     config*: PObjectType # Prefs table
-
-    # Variables    
-    # Counter
-    counter*: int
-    # Temperature Converter
-    celsius*, fahrenheit*: string
-    # Flight Booker
-    currentFlight*: int
-    startDate*, returnDate*: string
-    # Timer
-    duration*, startTime*, curTime*: float32
-    # CRUD
-    filterBuf*, nameBuf*, surnameBuf*: string
-    currentName*: int
-    namesData*: seq[tuple[name, surname: string]]
-    # Circle Drawer
-    actionsStack*: seq[Action]
-    diameter*: int32
-    currentCirc*, currentAction*: int
-    circlesList*: seq[Circle]
-    # Cells
-    spreadsheet*: Spreadsheet
-
-    # Basic tab variables
-    num*: int32
-    elem*: Element
-    checked*: bool
-    angle*: float32
-    double*: float64
-    sliderInt*: int32
-    basicCounter*, clicked*: int
-    dragInt*, dragInt2*: int32
-    color3*: array[3, float32]
-    color4*: array[4, float32]
-    float3*: array[3, float32]
-    buffer*, hintBuffer*: string
-    floatNum*, scientFloat*: float32
-    dragFloat*, dragFloat2*: float32
-    sliderFloat*, sliderFloat2*: float32
-    radioCurrent*, comboCurrent*, listCurrent*: int32
-
-proc newCircle*(pos: ImVec2, radius: float32): Circle = 
-  Circle(pos: pos, radius: radius)
-
-proc newAction*(pos: ImVec2, kind: ActionKind, radius: float32): Action = 
-  Action(pos: pos, kind: kind, radius: radius)
 
 proc `+`*(vec1, vec2: ImVec2): ImVec2 = 
   ImVec2(x: vec1.x + vec2.x, y: vec1.y + vec2.y)
@@ -132,6 +68,68 @@ proc `*=`*(vec1: var ImVec2, vec2: ImVec2) =
 proc `/=`*(vec1: var ImVec2, vec2: ImVec2) = 
   vec1.x /= vec2.x
   vec1.y /= vec2.y
+
+proc igVec2*(x, y: float32): ImVec2 = ImVec2(x: x, y: y)
+
+proc igVec4*(x, y, z, w: float32): ImVec4 = ImVec4(x: x, y: y, z: z, w: w)
+
+proc igVec4*(color: Color): ImVec4 = ImVec4(x: color.r, y: color.g, z: color.b, w: color.a)
+
+proc igHSV*(h, s, v: float32, a: float32 = 1f): ImColor = 
+  result.addr.hSVNonUDT(h, s, v, a)
+
+proc igGetContentRegionAvail*(): ImVec2 = 
+  igGetContentRegionAvailNonUDT(result.addr)
+
+proc igGetWindowPos*(): ImVec2 = 
+  igGetWindowPosNonUDT(result.addr)
+
+proc igCalcTextSize*(text: cstring, text_end: cstring = nil, hide_text_after_double_hash: bool = false, wrap_width: float32 = -1.0'f32): ImVec2 = 
+  igCalcTextSizeNonUDT(result.addr, text, text_end, hide_text_after_double_hash, wrap_width)
+
+proc igColorConvertU32ToFloat4*(color: uint32): ImVec4 = 
+  igColorConvertU32ToFloat4NonUDT(result.addr, color)
+
+proc getCenter*(self: ptr ImGuiViewport): ImVec2 = 
+  getCenterNonUDT(result.addr, self)
+
+proc centerCursorX*(width: float32, align: float = 0.5f, availWidth: float32 = igGetContentRegionAvail().x) = 
+  let off = (availWidth - width) * align
+  
+  if off > 0:
+    igSetCursorPosX(igGetCursorPosX() + off)
+
+proc igHelpMarker*(text: string) = 
+  igTextDisabled("(?)")
+  if igIsItemHovered():
+    igBeginTooltip()
+    igPushTextWrapPos(igGetFontSize() * 35.0)
+    igTextUnformatted(text)
+    igPopTextWrapPos()
+    igEndTooltip()
+
+proc newImFontConfig*(mergeMode = false): ImFontConfig =
+  result.fontDataOwnedByAtlas = true
+  result.fontNo = 0
+  result.oversampleH = 3
+  result.oversampleV = 1
+  result.pixelSnapH = true
+  result.glyphMaxAdvanceX = float.high
+  result.rasterizerMultiply = 1.0
+  result.mergeMode = mergeMode
+
+proc igAddFontFromMemoryTTF*(self: ptr ImFontAtlas, data: string, size_pixels: float32, font_cfg: ptr ImFontConfig = nil, glyph_ranges: ptr ImWchar = nil): ptr ImFont {.discardable.} = 
+  let igFontStr = cast[cstring](igMemAlloc(data.len.uint))
+  igFontStr[0].unsafeAddr.copyMem(data[0].unsafeAddr, data.len)
+  result = self.addFontFromMemoryTTF(igFontStr, data.len.int32, sizePixels, font_cfg, glyph_ranges)
+
+proc igPushDisabled*() = 
+  igPushItemFlag(ImGuiItemFlags.Disabled, true)
+  igPushStyleVar(ImGuiStyleVar.Alpha, igGetStyle().alpha * 0.6)
+
+proc igPopDisabled*() = 
+  igPopItemFlag()
+  igPopStyleVar()
 
 # To be able to print large holey enums
 macro enumFullRange*(a: typed): untyped =
@@ -209,36 +207,6 @@ proc parseColor4*(node: PrefsNode): array[4, float32] =
   else:
     raise newException(ValueError, &"Invalid color RGBA {node}")
 
-proc igVec2*(x, y: float32): ImVec2 = ImVec2(x: x, y: y)
-
-proc igVec4*(x, y, z, w: float32): ImVec4 = ImVec4(x: x, y: y, z: z, w: w)
-
-proc igVec4*(color: Color): ImVec4 = ImVec4(x: color.r, y: color.g, z: color.b, w: color.a)
-
-proc igHSV*(h, s, v: float32, a: float32 = 1f): ImColor = 
-  result.addr.hSVNonUDT(h, s, v, a)
-
-proc igGetContentRegionAvail*(): ImVec2 = 
-  igGetContentRegionAvailNonUDT(result.addr)
-
-proc igGetWindowPos*(): ImVec2 = 
-  igGetWindowPosNonUDT(result.addr)
-
-proc igCalcTextSize*(text: cstring, text_end: cstring = nil, hide_text_after_double_hash: bool = false, wrap_width: float32 = -1.0'f32): ImVec2 = 
-  igCalcTextSizeNonUDT(result.addr, text, text_end, hide_text_after_double_hash, wrap_width)
-
-proc igColorConvertU32ToFloat4*(color: uint32): ImVec4 = 
-  igColorConvertU32ToFloat4NonUDT(result.addr, color)
-
-proc getCenter*(self: ptr ImGuiViewport): ImVec2 = 
-  getCenterNonUDT(result.addr, self)
-
-proc centerCursorX*(width: float32, align: float = 0.5f, availWidth: float32 = igGetContentRegionAvail().x) = 
-  let off = (availWidth - width) * align
-  
-  if off > 0:
-    igSetCursorPosX(igGetCursorPosX() + off)
-
 proc initGLFWImage*(data: ImageData): GLFWImage = 
   result = GLFWImage(pixels: cast[ptr cuchar](data.image[0].unsafeAddr), width: int32 data.width, height: int32 data.height)
 
@@ -262,30 +230,6 @@ proc loadTextureFromData*(data: var ImageData, outTexture: var GLuint) =
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
 
     glTexImage2D(GL_TEXTURE_2D, GLint 0, GL_RGBA.GLint, GLsizei data.width, GLsizei data.height, GLint 0, GL_RGBA, GL_UNSIGNED_BYTE, data.image[0].addr)
-
-proc igHelpMarker*(text: string) = 
-  igTextDisabled("(?)")
-  if igIsItemHovered():
-    igBeginTooltip()
-    igPushTextWrapPos(igGetFontSize() * 35.0)
-    igTextUnformatted(text)
-    igPopTextWrapPos()
-    igEndTooltip()
-
-proc newImFontConfig*(mergeMode = false): ImFontConfig =
-  result.fontDataOwnedByAtlas = true
-  result.fontNo = 0
-  result.oversampleH = 3
-  result.oversampleV = 1
-  result.pixelSnapH = true
-  result.glyphMaxAdvanceX = float.high
-  result.rasterizerMultiply = 1.0
-  result.mergeMode = mergeMode
-
-proc igAddFontFromMemoryTTF*(self: ptr ImFontAtlas, data: string, size_pixels: float32, font_cfg: ptr ImFontConfig = nil, glyph_ranges: ptr ImWchar = nil): ptr ImFont {.discardable.} = 
-  let igFontStr = cast[cstring](igMemAlloc(data.len.uint))
-  igFontStr[0].unsafeAddr.copyMem(data[0].unsafeAddr, data.len)
-  result = self.addFontFromMemoryTTF(igFontStr, data.len.int32, sizePixels, font_cfg, glyph_ranges)
 
 proc openURL*(url: string) = 
   when defined(MacOS) or defined(MacOSX):
@@ -327,13 +271,6 @@ proc initconfig*(app: var App, settings: PrefsNode, parent: string = "") =
       if name notin app.prefs:
         app.prefs[name] = data["default"]
 
-proc validateDate*(input, format: string): tuple[success: bool, date: DateTime] = 
-  try:
-    result.date = input.parse(format)
-    result.success = true
-  except TimeParseError:
-    result.success = false
-
 proc newString*(lenght: int, default: string): string = 
   result = newString(lenght)
   result[0..default.high] = default
@@ -344,21 +281,12 @@ proc cleanString*(str: string): string =
   else:
     str.strip()
 
-proc igPushDisabled*() = 
-  igPushItemFlag(ImGuiItemFlags.Disabled, true)
-  igPushStyleVar(ImGuiStyleVar.Alpha, igGetStyle().alpha * 0.6)
-
-proc igPopDisabled*() = 
-  igPopItemFlag()
-  igPopStyleVar()
-
-proc remove*[T](s: var seq[T], val: T) = 
-  for i in s.high.countDown(0):
-    if s[i] == val:
-      s.delete(i)
-
 proc pushString*(str: var string, val: string) = 
   if val.len < str.len:
     str[0..val.len] = val & '\0'
   else:
     str[0..str.high] = val[0..str.high]
+
+proc updatePrefs*(app: var App) = 
+  # Update the values depending on the preferences here
+  echo "Updating preferences..."

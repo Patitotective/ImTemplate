@@ -195,6 +195,8 @@ proc drawPrefsModal*(app: var App) =
       for name, val in app.cache:
         app.prefs[name] = val
 
+      app.updatePrefs()
+
       igCloseCurrentPopup()
     
     igSameLine()
@@ -222,6 +224,8 @@ proc drawPrefsModal*(app: var App) =
         app.prefs.overwrite()
         app.initConfig(app.config["settings"])
         app.cache = default PObjectType
+        app.updatePrefs()
+
         igCloseCurrentPopup()
 
       igSameLine()
