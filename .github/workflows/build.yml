@@ -37,6 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: iffy/install-nim@v4.1.1
+      - name: Bild exes
         run: |
           ARCH=amd64 nake build
           ARCH=i386 FLAGS="--passC:\"-m32\" --passL:\"-m32\"" nake build
