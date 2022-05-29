@@ -48,7 +48,7 @@ task "build", "Build AppImage":
 
   var appimagetoolPath = "appimagetool"
   if not silentShell("Checking for appimagetool", appimagetoolPath, "--help"):
-      appimagetoolPath = "appimagetool-x86_64.AppImage"
+      appimagetoolPath = "./appimagetool-x86_64.AppImage"
       if not fileExists(appimagetoolPath):
         direSilentShell &"Dowloading {appimagetoolPath}", "wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O ", appimagetoolPath
         shell "chmod +x", appimagetoolPath
