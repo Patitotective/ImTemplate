@@ -15,15 +15,11 @@ jobs:
       - uses: iffy/install-nim@v4.1.1
       - name: Install x11 dev libraries
         run: sudo apt install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl-dev
-      
-      - name: Install libgl1-mesa-dev:i386
-        run: sudo apt install libgl1-mesa-dev:i386
-      
+
       - name: Build AppImages
         run: |
           nimble install -d -y
           ARCH=amd64 nake build
-          ARCH=i386 FLAGS="--passC:\"-m32\" --passL:\"-m32\"" nake build
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:
@@ -40,7 +36,6 @@ jobs:
       - name: Bild exes
         run: |
           ARCH=amd64 nake build
-          ARCH=i386 FLAGS="--passC:\"-m32\" --passL:\"-m32\"" nake build
       - name: Upload release binaries
         uses: alexellis/upload-assets@0.2.2
         env:

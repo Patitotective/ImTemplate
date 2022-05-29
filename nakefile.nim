@@ -19,19 +19,16 @@ const
   X-AppImage-Arch=$arch
   """.dedent()
 let config {.compileTime.} = configPath.readPrefs()
+let arch = if existsEnv("ARCH"): getEnv("ARCH") else: "amd64"
 const
   name = config["name"].getString() 
   version = config["version"].getString()
-  appimagePath = &"{name}-{version}-{arch}.AppImage"
-
-let arch = if existsEnv("ARCH"): getEnv("ARCH") else: "amd64"
+let appimagePath = &"{name}-{version}-{arch}.AppImage"
 
 task "build", "Build AppImage":
-  shell "nimble install -d -y"
-
   discard existsOrCreateDir("AppDir")
   if "AppDir/AppRun".needsRefresh("main.nim"):
-    shell &"nim cpp -d:release -d:appImage --app:gui --cpu:{arch} --out:AppDir/AppRun main"
+    shell "FLAGS=\"--out:AppDir/AppRun -d:appimage\" nimble buildApp"
 
   writeFile(
     &"AppDir/{name}.desktop", 
