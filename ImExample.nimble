@@ -14,7 +14,7 @@ requires "nake >= 1.9.4"
 requires "nimgl >= 1.3.2"
 requires "chroma >= 0.2.4"
 requires "imstyle >= 0.3.2"
-requires "niprefs >= 0.3.3"
+requires "niprefs >= 0.3.4"
 requires "stb_image >= 2.5"
 
 import std/[strformat, os]
