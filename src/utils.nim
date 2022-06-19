@@ -22,7 +22,7 @@ type
 
   ImageData* = tuple[image: seq[byte], width, height: int]
 
-  App* = ref object
+  App* = object
     win*: GLFWWindow
     font*: ptr ImFont
     prefs*: Prefs
