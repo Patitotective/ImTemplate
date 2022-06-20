@@ -18,7 +18,6 @@ proc getData(path: string): string =
     readFile(path)
 
 proc getData(node: TomlValueRef): string = 
-  assert node.kind == TomlKind.String
   node.getString().getData()
 
 proc getCacheDir(app: App): string = 

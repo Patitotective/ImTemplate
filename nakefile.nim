@@ -18,7 +18,7 @@ X-AppImage-Version=$version
 X-AppImage-Arch=$arch
 """
 
-let config {.compileTime.} = Toml.loadFile(configPath, TomlValueRef)
+let config {.compileTime.} = Toml.decode(static(slurp(configPath)), TomlValueRef)
 
 const name = config["name"].getString() 
 const version = config["version"].getString()
@@ -35,7 +35,7 @@ task "build", "Build AppImage":
     &"AppDir/{name}.desktop", 
     desktop % [
       "name", name, 
-      "categories", config["categories"].getSeq().mapIt(it.getString()).join(";"), 
+      "categories", config["categories"].getArray().mapIt(it.getString()).join(";"), 
       "version", config["version"].getString(), 
       "comment", config["comment"].getString(), 
       "arch", arch
@@ -67,4 +67,4 @@ task "run", "Build and run AppImage":
     runTask("build")
 
   shell &"chmod a+x {appimagePath}" # Make it executable
-  shell appimagePath
+  shell &"./{appimagePath}"
