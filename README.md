@@ -3,7 +3,7 @@ Template for making a single-windowed (or not) Dear ImGui application in Nim.
 
 ![Main Window](https://user-images.githubusercontent.com/79225325/170889620-d1b3ce74-c92d-440c-9144-92b068973651.png)
 
-(Check [ImDemo](https://github.com/Patitotective/ImDemo) for full example)
+(Check [ImDemo](https://github.com/Patitotective/ImDemo) for a **full** example)
 
 ## Features
 - Icon font support.
@@ -23,11 +23,11 @@ Template for making a single-windowed (or not) Dear ImGui application in Nim.
 - `resourcesdata.nim`: To bundle data resources (see [Bundling](#bundling)).
 - `nakefile.md`: [Nakefile](https://github.com/fowlmouth/nake) to build the AppImage (see [Building](#building)).
 - `config.nims`: Nim compile configuration.
-- `config.niprefs`: Application's configuration (see [Config](#config)).
+- `config.toml`: Application's configuration (see [Config](#config)).
 - `ImExample.nimble`: [Nimble file](https://github.com/nim-lang/nimble#creating-packages).
 - `assets`: 
   - `icon.png`, `icon.svg`: App icons.
-  - `style.niprefs`: App style (using [ImStyle](https://github.com/Patitotective/ImStyle)).
+  - `style.toml`: Style (using [ImStyle](https://github.com/Patitotective/ImStyle)).
   - `Cousine-Regular.ttf`, `Karla-Regular.ttf`, `Roboto-Regular.ttf`, `ProggyVector Regular.ttf`: Multiple fonts so you can choose the one you like the most.
   - `forkawesome-webfont.ttf`: ForkAwesome icon font (see https://forkaweso.me/).
 - `src`:
@@ -36,7 +36,7 @@ Template for making a single-windowed (or not) Dear ImGui application in Nim.
   - `prefsmodal.nim`: Draw the preferences modal (called in `main.nim`)
 
 ## Icon Font
-ImTemplate uses [ForkAwesome](https://forkaweso.me)'s icon font to be able to display icon in labes, to do it you only need to import [`icons.nim`](https://github.com/Patitotective/ImTemplate/blob/main/src/icons.niprefs) (where the unicode points for each icon are defined), browse https://forkaweso.me/Fork-Awesome/icons, choose the one you want and, for example, if you want to use [`fa-floppy-o`](https://forkaweso.me/Fork-Awesome/icon/floppy-o/), you will write `FA_FloppyO` in a string:
+ImTemplate uses [ForkAwesome](https://forkaweso.me)'s icon font to be able to display icon in labes, to do it you only need to import [`icons.nim`](https://github.com/Patitotective/ImTemplate/blob/main/src/icons.toml) (where the unicode points for each icon are defined), browse https://forkaweso.me/Fork-Awesome/icons, choose the one you want and, for example, if you want to use [`fa-floppy-o`](https://forkaweso.me/Fork-Awesome/icon/floppy-o/), you will write `FA_FloppyO` in a string:
 ```nim
 ...
 if igButton("Open Link " & FA_ExternalLink):
@@ -44,15 +44,15 @@ if igButton("Open Link " & FA_ExternalLink):
 ```
 
 ## App Structure
-The code is designed to rely on the `App` type (defined in [`utils.niprefs`](https://github.com/Patitotective/ImTemplate/blob/main/src/utils.niprefs)), you may want to store anything that your program needs inside it.
+The code is designed to rely on the `App` type (defined in [`utils.nim`](https://github.com/Patitotective/ImTemplate/blob/main/src/utils.nim)), you may want to store anything that your program needs inside it.
 ```nim
 type
   App* = ref object
     win*: GLFWWindow
     font*: ptr ImFont
     prefs*: Prefs
-    cache*: PObjectType # Settings cache
-    config*: PObjectType # Prefs table
+    cache*: TomlValueRef # Settings cache
+    config*: TomlValueRef # Prefs table
 
     # Add your variables here
     ...
@@ -61,42 +61,41 @@ type
 - `font`: Default app font (you may want to add more fonts).
 - `prefs`: App preferences (using [niprefs](https://patitotective.github.io/niprefs/)).
 - `cache`: Preferences modal cache settings (to discard or apply them).
-- `config`: Configuration file (loaded from `config.niprefs`).
+- `config`: Configuration file (loaded from `config.toml`).
 
 ## Config
 The application's configuration will store information about the app that you may want to change after compiled and before deployed (like the name or version).   
-It is stored using [niprefs](https://patitotective.github.io/niprefs/) and by default at [`config.niprefs`](https://github.com/Patitotective/ImTemplate/blob/main/config.niprefs):
+It is stored using [niprefs](https://patitotective.github.io/niprefs/) and by default at [`config.toml`](https://github.com/Patitotective/ImTemplate/blob/main/config.toml):
 ```nim
 # App
-name="ImExample"
-comment="ImExample is a simple Dear ImGui application example"
-version="0.2.0"
-website="https://github.com/Patitotective/ImTemplate"
-authors=["Patitotective <https://github.com/Patitotective>", "Cristobal <mailto:cristobalriaga@gmail.com>", "Omar Cornut <https://github.com/ocornut>", "Beef, Yard, Rika",  "and the Nim community :]", "Inu147"]
-categories=["Utility"]
+name = "ImExample"
+comment = "ImExample is a simple Dear ImGui application example"
+version = "0.4.0"
+website = "https://github.com/Patitotective/ImTemplate"
+authors = ["Patitotective <https://github.com/Patitotective>", "Cristobal <mailto:cristobalriaga@gmail.com>", "Omar Cornut <https://github.com/ocornut>", "Beef, Yard, Rika",  "and the Nim community :]", "Inu147"]
+categories = ["Utility"]
 
 # AppImage
-ghRepo="Patitotective/ImTemplate"
+ghRepo = "Patitotective/ImTemplate"
 
-stylePath="assets/style.niprefs"
-iconPath="assets/icon.png"
-svgIconPath="assets/icon.svg"
-iconFontPath="assets/forkawesome-webfont.ttf"
-fontPath="assets/ProggyVector Regular.ttf" # Other options are Roboto-Regular.ttf, Cousine-Regular.ttf or Karla-Regular.ttf
-fontSize=16f
+stylePath = "assets/style.toml"
+iconPath = "assets/icon.png"
+svgIconPath = "assets/icon.svg"
+iconFontPath = "assets/forkawesome-webfont.ttf"
+fontPath = "assets/ProggyVector Regular.ttf" # Other options are Roboto-Regular.ttf, Cousine-Regular.ttf or Karla-Regular.ttf
+fontSize = 16.0
 
 # Window
-minSize=[200, 200] # Width, height
+minSize = [200, 200] # Width, height
 
 # Settings for the preferences window
-settings=>
-  input=>
-    type="input"
-    default=""
-    max=100
-    flags="EnterReturnsTrue" # See https://nimgl.dev/docs/imgui.html#ImGuiInputTextFlags
-    help="Press enter to save"
-  ...
+[settings.input]
+type = "input"
+default = "Hello World"
+max = 100
+flags = "None" # See https://nimgl.dev/docs/imgui.html#ImGuiInputTextFlags
+help = "Help message"
+...
 ```
 
 ### About Modal
@@ -130,20 +129,17 @@ Using the information from the config file, ImTemplate creates a simple about mo
 ### `settings`
 Define the preferences that the user can modify through the preferences modal.
 
-These preferences will be stored at `getCacheDir(config["name"])` along with the window size and position using [niprefs](https://patitotective.github.io/niprefs/). To acces them you only need to do `app.prefs["setting"]`
+These preferences will be stored at `getCacheDir(config["name"])` along with the window size and position using [niprefs](https://patitotective.github.io/niprefs/). To acces them you only need to do `app.prefs["name"]`
 
 ![Prefs Modal](https://user-images.githubusercontent.com/79225325/170889748-316c4b7a-47d0-4a65-82b3-d4e50b9252ea.png)
 
-Each child key has to have the `type` key, and depending on it the required keys may change so go check [config.niprefs](https://github.com/Patitotective/ImTemplate/blob/main/config.niprefs) to see which keys which types do require.  
+Each child key has to have the `type` key, and depending on it the required keys may change so go check [config.toml](https://github.com/Patitotective/ImTemplate/blob/main/config.toml) to see which keys which types do require.  
 ```nim
-settings=>
-  combo=>
-    type="combo"
-    display="Combo box"
-    help="Click me to change my value"
-    default=2 # Or "c"
-    items=["a", "b", "c"]
-    flags="None" # See https://nimgl.dev/docs/imgui.html#ImGuiComboFlags
+[settings.combo]
+type = "combo"
+default = 2 # Or "c"
+items = ["a", "b", "c"]
+flags = "None" # See https://nimgl.dev/docs/imgui.html#ImGuiComboFlags
 ```
 There are two special keys, `display` and `help`, `display` replaces the name to display and `help` shows a help marker with help information (`help` does not work for `Section`s).  
 To access `combo`'s value in your program you should do `app.prefs["combo"]`
@@ -167,24 +163,22 @@ To access `combo`'s value in your program you should do `app.prefs["combo"]`
 Section types are useful to group similar settings.  
 It fits the settings at `content` inside a [collapsing header](https://nimgl.dev/docs/imgui.html#igCollapsingHeader%2Ccstring%2CImGuiTreeNodeFlags).
 ```nim
-settings=>
-  colors=>
-    display="Color pickers"
-    type="section"
-    flags="None" # See https://nimgl.dev/docs/imgui.html#ImGuiTreeNodeFlags
-    content=>
-      color=>
-        display="RGB color"
-        type="color3" # RGB
-        default="#000000" # Or [0, 0, 0] or rgb(0, 0, 0) or black
-        flags="None" # See https://nimgl.dev/docs/imgui.html#ImGuiColorEditFlags
-      alphaColor=>
-        display="RGBA color"
-        type="color4" # RGBA
-        default = "#11D1C2A3" # Or [0.06666667014360428, 0.8196078538894653, 0.7607843279838562, 0.6392157077789307]
-        flags="None" # See https://nimgl.dev/docs/imgui.html#ImGuiColorEditFlags
+[settings.colors]
+display = "Color pickers"
+type = "section"
+flags = "None" # See https://nimgl.dev/docs/imgui.html#ImGuiTreeNodeFlags
+[settings.colors.content.color]
+display = "RGB color"
+type = "color3" # RGB
+default = "#000000" # Or [0, 0, 0] or rgb(0, 0, 0) or black
+flags = "None" # See https://nimgl.dev/docs/imgui.html#ImGuiColorEditFlags
+[settings.colors.content.alphaColor]
+display = "RGBA color"
+type = "color4" # RGBA
+default  =  "rgba(17, 209, 194, 0.64)" # Or [0.06666667014360428, 0.8196078538894653, 0.7607843279838562, 0.6392157077789307]
+flags = "None" # See https://nimgl.dev/docs/imgui.html#ImGuiColorEditFlags
 ```
-To access `alphaColor` you will need to do `app.prefs["colors/alphaColor"]`.
+To access `alphaColor` you will need to do `app.prefs["colors"]["alphaColor"]` or `app.prefs{"colors", "alphaColor"}`.
 
 ## Building
 To build your app you may want to run `nimble buildApp` task.
@@ -222,13 +216,15 @@ This can take several minutes.
 
 ## Generated from ImTemplate
 Apps using this template:
-- [ImDemo](https://github.com/Patitotective/ImDemo)
-- [ImPasswordGen](https://github.com/Patitotective/ImPasswordGen)
-- [ImClocks](https://github.com/Patitotective/ImClocks)
+- [ImDemo](https://github.com/Patitotective/ImDemo).
+- [ImPasswordGen](https://github.com/Patitotective/ImPasswordGen).
+- [ImClocks](https://github.com/Patitotective/ImClocks).
+- [ImThemes](https://github.com/Patitotective/ImThemes).
 
 (Contact me if you want your app to be added here).
 
 ## About
+- Icon Font: https://forkaweso.me (MIT).
 - GitHub: https://github.com/Patitotective/ImTemplate.
 - Discord: https://discord.gg/as85Q4GnR6.
 

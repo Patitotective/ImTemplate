@@ -9,7 +9,7 @@ import src/[prefsmodal, utils, icons]
 when defined(release):
   from resourcesdata import resources
 
-const configPath = "config.niprefs"
+const configPath = "config.toml"
 
 proc getData(path: string): string = 
   when defined(release):
@@ -17,7 +17,7 @@ proc getData(path: string): string =
   else:
     readFile(path)
 
-proc getData(node: PrefsNode): string = 
+proc getData(node: TomlValueRef): string = 
   node.getString().getData()
 
 proc getCacheDir(app: App): string = 
@@ -161,9 +161,9 @@ proc initWindow(app: var App) =
   glfwWindowHint(GLFWResizable, GLFW_TRUE)
 
   app.win = glfwCreateWindow(
-    app.prefs["win/width"].getInt().int32, 
-    app.prefs["win/height"].getInt().int32, 
-    app.config["name"].getString().cstring, 
+    int32 app.prefs{"win", "width"}.getInt(), 
+    int32 app.prefs{"win", "height"}.getInt(), 
+    cstring app.config["name"].getString(), 
     icon = false # Do not use default icon
   )
 
@@ -177,33 +177,36 @@ proc initWindow(app: var App) =
   app.win.setWindowSizeLimits(app.config["minSize"][0].getInt().int32, app.config["minSize"][1].getInt().int32, GLFW_DONT_CARE, GLFW_DONT_CARE) # minWidth, minHeight, maxWidth, maxHeight
 
   # If negative pos, center the window in the first monitor
-  if app.prefs["win/x"].getInt() < 0 or app.prefs["win/y"].getInt() < 0:
+  if app.prefs{"win", "x"}.getInt() < 0 or app.prefs{"win", "y"}.getInt() < 0:
     var monitorX, monitorY, count: int32
     let monitors = glfwGetMonitors(count.addr)
     let videoMode = monitors[0].getVideoMode()
 
     monitors[0].getMonitorPos(monitorX.addr, monitorY.addr)
     app.win.setWindowPos(
-      monitorX + int32((videoMode.width - int app.prefs["win/width"].getInt()) / 2), 
-      monitorY + int32((videoMode.height - int app.prefs["win/height"].getInt()) / 2)
+      monitorX + int32((videoMode.width - int app.prefs{"win", "width"}.getInt()) / 2), 
+      monitorY + int32((videoMode.height - int app.prefs{"win", "height"}.getInt()) / 2)
     )
   else:
-    app.win.setWindowPos(app.prefs["win/x"].getInt().int32, app.prefs["win/y"].getInt().int32)
+    app.win.setWindowPos(app.prefs{"win", "x"}.getInt().int32, app.prefs{"win", "y"}.getInt().int32)
 
 proc initPrefs(app: var App) = 
-  app.prefs = toPrefs({
-    win: {
-      x: -1, # Negative numbers center the window
-      y: -1,
-      width: 600,
-      height: 650
+  app.prefs = initPrefs(
+    path = (app.getCacheDir() / app.config["name"].getString()).changeFileExt("toml"), 
+    default = toToml {
+      win: {
+        x: -1, # Negative numbers center the window
+        y: -1,
+        width: 600,
+        height: 650
+      }
     }
-  }).initPrefs((app.getCacheDir() / app.config["name"].getString()).changeFileExt("niprefs"))
+  )
 
-proc initApp(config: PObjectType): App = 
-  result = App(config: config)
+proc initApp(config: TomlValueRef): App = 
+  result = App(config: config, cache: newTTable())
   result.initPrefs()
-  result.initConfig(result.config["settings"])
+  result.initSettings(result.config["settings"])
 
 proc terminate(app: var App) = 
   var x, y, width, height: int32
@@ -211,13 +214,15 @@ proc terminate(app: var App) =
   app.win.getWindowPos(x.addr, y.addr)
   app.win.getWindowSize(width.addr, height.addr)
   
-  app.prefs["win/x"] = x
-  app.prefs["win/y"] = y
-  app.prefs["win/width"] = width
-  app.prefs["win/height"] = height
+  app.prefs{"win", "x"} = x
+  app.prefs{"win", "y"} = y
+  app.prefs{"win", "width"} = width
+  app.prefs{"win", "height"} = height
+
+  app.prefs.save()
 
 proc main() =
-  var app = initApp(configPath.getData().parsePrefs())
+  var app = initApp(Toml.decode(configPath.getData(), TomlValueRef))
 
   # Setup Window
   doAssert glfwInit()
@@ -234,7 +239,7 @@ proc main() =
   io.iniFilename = nil # Disable .ini config file
 
   # Setup Dear ImGui style using ImStyle
-  setIgStyle(app.config["stylePath"].getData().parsePrefs())
+  setStyleFromToml(Toml.decode(app.config["stylePath"].getData(), TomlValueRef))
 
   # Setup Platform/Renderer backends
   doAssert igGlfwInitForOpenGL(app.win, true)

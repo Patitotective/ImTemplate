@@ -22,12 +22,12 @@ type
 
   ImageData* = tuple[image: seq[byte], width, height: int]
 
-  App* = ref object
+  App* = object
     win*: GLFWWindow
     font*: ptr ImFont
     prefs*: Prefs
-    cache*: PObjectType # Settings cache
-    config*: PObjectType # Prefs table
+    cache*: TomlValueRef # Settings cache
+    config*: TomlValueRef # Prefs table
 
 proc `+`*(vec1, vec2: ImVec2): ImVec2 = 
   ImVec2(x: vec1.x + vec2.x, y: vec1.y + vec2.y)
@@ -87,17 +87,30 @@ proc igGetWindowPos*(): ImVec2 =
 proc igCalcTextSize*(text: cstring, text_end: cstring = nil, hide_text_after_double_hash: bool = false, wrap_width: float32 = -1.0'f32): ImVec2 = 
   igCalcTextSizeNonUDT(result.addr, text, text_end, hide_text_after_double_hash, wrap_width)
 
+proc igCalcFrameSize*(text: string): ImVec2 = 
+  igCalcTextSize(cstring text) + (igGetStyle().framePadding * 2)
+
 proc igColorConvertU32ToFloat4*(color: uint32): ImVec4 = 
   igColorConvertU32ToFloat4NonUDT(result.addr, color)
 
 proc getCenter*(self: ptr ImGuiViewport): ImVec2 = 
   getCenterNonUDT(result.addr, self)
 
-proc centerCursorX*(width: float32, align: float = 0.5f, availWidth: float32 = igGetContentRegionAvail().x) = 
-  let off = (availWidth - width) * align
+proc igCenterCursorX*(width: float32, align: float = 0.5f, avail = igGetContentRegionAvail().x) = 
+  let off = (avail - width) * align
   
   if off > 0:
     igSetCursorPosX(igGetCursorPosX() + off)
+
+proc igCenterCursorY*(height: float32, align: float = 0.5f, avail = igGetContentRegionAvail().y) = 
+  let off = (avail - height) * align
+  
+  if off > 0:
+    igSetCursorPosY(igGetCursorPosY() + off)
+
+proc igCenterCursor*(size: ImVec2, alignX: float = 0.5f, alignY: float = 0.5f, avail = igGetContentRegionAvail()) = 
+  igCenterCursorX(size.x, alignX, avail.x)
+  igCenterCursorY(size.y, alignY, avail.y)
 
 proc igHelpMarker*(text: string) = 
   igTextDisabled("(?)")
@@ -123,14 +136,6 @@ proc igAddFontFromMemoryTTF*(self: ptr ImFontAtlas, data: string, size_pixels: f
   igFontStr[0].unsafeAddr.copyMem(data[0].unsafeAddr, data.len)
   result = self.addFontFromMemoryTTF(igFontStr, data.len.int32, sizePixels, font_cfg, glyph_ranges)
 
-proc igPushDisabled*() = 
-  igPushItemFlag(ImGuiItemFlags.Disabled, true)
-  igPushStyleVar(ImGuiStyleVar.Alpha, igGetStyle().alpha * 0.6)
-
-proc igPopDisabled*() = 
-  igPopItemFlag()
-  igPopStyleVar()
-
 # To be able to print large holey enums
 macro enumFullRange*(a: typed): untyped =
   newNimNode(nnkBracket).add(a.getType[1][1..^1])
@@ -143,17 +148,13 @@ proc getEnumValues*[T: enum](): seq[string] =
   for i in T:
     result.add $i
 
-proc parseEnum*[T: enum](node: PrefsNode): T = 
-  case node.kind:
-  of PInt:
-    result = T(node.getInt())
-  of PString:
-    try:
-      result = parseEnum[T](node.getString().capitalizeAscii())
-    except:
-      raise newException(ValueError, &"Invalid enum value {node.getString()} for {$T}. Valid values are {$getEnumValues[T]()}")
-  else:
-    raise newException(ValueError, &"Invalid kind {node.kind} for an enum. Valid kinds are PInt or PString")
+proc parseEnum*[T: enum](node: TomlValueRef): T = 
+  assert node.kind == TomlKind.String
+
+  try:
+    result = parseEnum[T](node.getString().capitalizeAscii())
+  except:
+    raise newException(ValueError, &"Invalid enum value {node.getString()} for {$T}. Valid values are {$getEnumValues[T]()}")
 
 proc makeFlags*[T: enum](flags: varargs[T]): T =
   ## Mix multiple flags of a specific enum
@@ -163,43 +164,49 @@ proc makeFlags*[T: enum](flags: varargs[T]): T =
 
   result = T res
 
-proc getFlags*[T: enum](node: PrefsNode): T = 
+proc getFlags*[T: enum](node: TomlValueRef): T = 
   ## Similar to parseEnum but this one mixes multiple enum values if node.kind == PSeq
   case node.kind:
-  of PString, PInt:
+  of TomlKind.String, TomlKind.Int:
     result = parseEnum[T](node)
-  of PSeq:
+  of TomlKind.Array:
     var flags: seq[T]
-    for i in node.getSeq():
+    for i in node.getArray():
       flags.add parseEnum[T](i)
 
     result = makeFlags(flags)
   else:
     raise newException(ValueError, "Invalid kind {node.kind} for {$T} enum. Valid kinds are PInt, PString or PSeq") 
 
-proc parseColor3*(node: PrefsNode): array[3, float32] = 
+proc parseColor3*(node: TomlValueRef): array[3, float32] = 
+  assert not node.isNil and node.kind in {TomlKind.String, TomlKind.Array}
+
   case node.kind
-  of PString:
+  of TomlKind.String:
     let color = node.getString().parseHtmlColor()
     result[0] = color.r
     result[1] = color.g
     result[2] = color.b 
-  of PSeq:
+  of TomlKind.Array:
+    assert node.len == 3
     result[0] = node[0].getFloat()
     result[1] = node[1].getFloat()
     result[2] = node[2].getFloat()
   else:
     raise newException(ValueError, &"Invalid color RGB {node}")
 
-proc parseColor4*(node: PrefsNode): array[4, float32] = 
+proc parseColor4*(node: TomlValueRef): array[4, float32] = 
+  assert not node.isNil and node.kind in {TomlKind.String, TomlKind.Array}
+
   case node.kind
-  of PString:
-    let color = node.getString().replace("#").parseHexAlpha()
+  of TomlKind.String:
+    let color = node.getString().parseHtmlColor()
     result[0] = color.r
     result[1] = color.g
     result[2] = color.b 
     result[3] = color.a
-  of PSeq:
+  of TomlKind.Array:
+    assert node.len == 4
     result[0] = node[0].getFloat()
     result[1] = node[1].getFloat()
     result[2] = node[2].getFloat()
@@ -258,34 +265,42 @@ proc removeInside*(text: string, open, close: char): tuple[text: string, inside:
     if inside:
       result.inside.add i
 
-proc initconfig*(app: var App, settings: PrefsNode, parent: string = "") = 
-  # Add the preferences with the values defined in config["settings"]
+proc initSettings*(app: var App, settings: TomlValueRef, parent = "", overwrite = false) = 
+  ## Init the settings defined in config["settings"] and the cache.
   for name, data in settings: 
     let settingType = parseEnum[SettingTypes](data["type"])
     if settingType == Section:
-      app.initConfig(data["content"], parent = name)  
+      app.initSettings(data["content"], parent = name, overwrite)
+    
     elif parent.len > 0:
-      if not app.prefs.hasPath(parent, name):
-        app.prefs[parent, name] = data["default"]
+
+      if parent notin app.prefs or overwrite:
+        app.prefs[parent] = newTTable()
+      if name notin app.prefs[parent] or overwrite:
+        app.prefs{parent, name} = data["default"]
+
+      app.cache{parent, name} = app.prefs{parent, name}
     else:
-      if name notin app.prefs:
+      if name notin app.prefs or overwrite:
         app.prefs[name] = data["default"]
-
-proc newString*(lenght: int, default: string): string = 
-  result = newString(lenght)
-  result[0..default.high] = default
-
-proc cleanString*(str: string): string = 
-  if '\0' in str:
-    str[0..<str.find('\0')].strip()
-  else:
-    str.strip()
+      
+      app.cache[name] = app.prefs[name]
 
 proc pushString*(str: var string, val: string) = 
   if val.len < str.len:
     str[0..val.len] = val & '\0'
   else:
     str[0..str.high] = val[0..str.high]
+
+proc newString*(length: int, default: string): string = 
+  result = newString(length)
+  result.pushString(default)
+
+proc cleanString*(str: string): string = 
+  if '\0' in str:
+    str[0..<str.find('\0')].strip()
+  else:
+    str.strip()
 
 proc updatePrefs*(app: var App) = 
   # Update the values depending on the preferences here
