@@ -36,7 +36,7 @@ Template for making a single-windowed (or not) Dear ImGui application in Nim.
   - `prefsmodal.nim`: Draw the preferences modal (called in `main.nim`)
 
 ## Icon Font
-ImTemplate uses [ForkAwesome](https://forkaweso.me)'s icon font to be able to display icon in labes, to do it you only need to import [`icons.nim`](https://github.com/Patitotective/ImTemplate/blob/main/src/icons.niprefs) (where the unicode points for each icon are defined), browse https://forkaweso.me/Fork-Awesome/icons, choose the one you want and, for example, if you want to use [`fa-floppy-o`](https://forkaweso.me/Fork-Awesome/icon/floppy-o/), you will write `FA_FloppyO` in a string:
+ImTemplate uses [ForkAwesome](https://forkaweso.me)'s icon font to be able to display icon in labes, to do it you only need to import [`icons.nim`](https://github.com/Patitotective/ImTemplate/blob/main/src/icons.toml) (where the unicode points for each icon are defined), browse https://forkaweso.me/Fork-Awesome/icons, choose the one you want and, for example, if you want to use [`fa-floppy-o`](https://forkaweso.me/Fork-Awesome/icon/floppy-o/), you will write `FA_FloppyO` in a string:
 ```nim
 ...
 if igButton("Open Link " & FA_ExternalLink):
@@ -44,7 +44,7 @@ if igButton("Open Link " & FA_ExternalLink):
 ```
 
 ## App Structure
-The code is designed to rely on the `App` type (defined in [`utils.niprefs`](https://github.com/Patitotective/ImTemplate/blob/main/src/utils.niprefs)), you may want to store anything that your program needs inside it.
+The code is designed to rely on the `App` type (defined in [`utils.nim`](https://github.com/Patitotective/ImTemplate/blob/main/src/utils.nim)), you may want to store anything that your program needs inside it.
 ```nim
 type
   App* = ref object
@@ -65,7 +65,7 @@ type
 
 ## Config
 The application's configuration will store information about the app that you may want to change after compiled and before deployed (like the name or version).   
-It is stored using [niprefs](https://patitotective.github.io/niprefs/) and by default at [`config.niprefs`](https://github.com/Patitotective/ImTemplate/blob/main/config.niprefs):
+It is stored using [niprefs](https://patitotective.github.io/niprefs/) and by default at [`config.toml`](https://github.com/Patitotective/ImTemplate/blob/main/config.toml):
 ```nim
 # App
 name = "ImExample"
@@ -133,7 +133,7 @@ These preferences will be stored at `getCacheDir(config["name"])` along with the
 
 ![Prefs Modal](https://user-images.githubusercontent.com/79225325/170889748-316c4b7a-47d0-4a65-82b3-d4e50b9252ea.png)
 
-Each child key has to have the `type` key, and depending on it the required keys may change so go check [config.niprefs](https://github.com/Patitotective/ImTemplate/blob/main/config.niprefs) to see which keys which types do require.  
+Each child key has to have the `type` key, and depending on it the required keys may change so go check [config.toml](https://github.com/Patitotective/ImTemplate/blob/main/config.toml) to see which keys which types do require.  
 ```nim
 [settings.combo]
 type = "combo"
