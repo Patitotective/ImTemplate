@@ -1,8 +1,9 @@
 import std/[strutils, strformat, typetraits, enumutils, macros, times, os]
+import imgui
 import chroma
 import niprefs
 import stb_image/read as stbi
-import nimgl/[imgui, glfw, opengl]
+import nimgl/[glfw, opengl]
 
 export enumutils
 

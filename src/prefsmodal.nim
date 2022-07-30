@@ -1,7 +1,7 @@
 import std/strutils
 
+import imgui
 import niprefs
-import nimgl/imgui
 
 import utils
 
