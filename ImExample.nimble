@@ -1,6 +1,6 @@
 # Package
 
-version          = "0.4.1"
+version          = "0.4.2"
 author           = "Patitotective"
 description      = "A new awesome Dear ImGui application"
 license          = "MIT"
@@ -13,10 +13,9 @@ requires "nim >= 1.6.2"
 requires "nake >= 1.9.4"
 requires "nimgl >= 1.3.2"
 requires "chroma >= 0.2.4"
-requires "imstyle >= 0.3.3"
-requires "niprefs >= 0.3.4"
 requires "stb_image >= 2.5"
-requires "https://github.com/nimgl/imgui >= 1.84.2"
+requires "imstyle >= 0.3.4 & < 0.4.0"
+requires "niprefs >= 0.3.4 & < 0.4.0"
 
 import std/[strformat, os]
 

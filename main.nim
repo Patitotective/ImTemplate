@@ -3,7 +3,7 @@ import std/[strutils, os]
 import imstyle
 import niprefs
 import nimgl/[opengl, glfw]
-import imgui, imgui/[impl_opengl, impl_glfw]
+import nimgl/imgui, nimgl/imgui/[impl_opengl, impl_glfw]
 
 import src/[prefsmodal, utils, icons]
 when defined(release):

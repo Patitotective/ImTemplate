@@ -70,7 +70,7 @@ It is stored using [niprefs](https://patitotective.github.io/niprefs/) and by de
 # App
 name = "ImExample"
 comment = "ImExample is a simple Dear ImGui application example"
-version = "0.4.1"
+version = "0.4.0"
 website = "https://github.com/Patitotective/ImTemplate"
 authors = ["Patitotective <https://github.com/Patitotective>", "Cristobal <mailto:cristobalriaga@gmail.com>", "Omar Cornut <https://github.com/ocornut>", "Beef, Yard, Rika",  "and the Nim community :]", "Inu147"]
 categories = ["Utility"]
