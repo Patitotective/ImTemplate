@@ -1,4 +1,4 @@
-import std/strutils
+import std/[strformat, strutils]
 
 import niprefs
 import nimgl/imgui
@@ -22,8 +22,8 @@ proc drawSetting(app: var App, name: string, data: TomlValueRef, alignWidth: flo
   let settingType = parseEnum[SettingTypes](data["type"])
   let label = if "display" in data: data["display"].getString() else: name.capitalizeAscii()
   if settingType != Section:
-    igText(cstring label.capitalizeAscii() & ": "); igSameLine(0, 0)
-    igDummy(igVec2(alignWidth - igCalcTextSize(cstring label.capitalizeAscii() & ": ").x, 0)); igSameLine(0, 0)
+    igText(cstring &"{label.capitalizeAscii()}: "); igSameLine(0, 0)
+    igDummy(igVec2(alignWidth - igCalcTextSize(cstring &"{label.capitalizeAscii()}: ").x, 0)); igSameLine(0, 0)
 
   case settingType
   of Input:
@@ -31,18 +31,18 @@ proc drawSetting(app: var App, name: string, data: TomlValueRef, alignWidth: flo
 
     var buffer = newString(int data["max"].getInt(), app.getCacheVal().getString())
 
-    if igInputTextWithHint(cstring "##" & name, if "hint" in data: data["hint"].getString().cstring else: "".cstring, buffer.cstring, data["max"].getInt().uint, flags):
+    if igInputTextWithHint(cstring &"##{name}", if "hint" in data: data["hint"].getString().cstring else: "".cstring, cstring buffer, data["max"].getInt().uint, flags):
       app.addToCache(buffer.cleanString().newTString())
   of Check:
     var checked = app.getCacheVal().getBool()
-    if igCheckbox(cstring "##" & name, checked.addr):
+    if igCheckbox(cstring &"##{name}", checked.addr):
       app.addToCache(checked.newTBool())
   of Slider:
     let flags = getFlags[ImGuiSliderFlags](data["flags"])
     var val = app.getCacheVal().getInt().int32
     
     if igSliderInt(
-      cstring "##" & name, 
+      cstring &"##{name}", 
       val.addr, 
       data["min"].getInt().int32, 
       data["max"].getInt().int32, 
@@ -55,7 +55,7 @@ proc drawSetting(app: var App, name: string, data: TomlValueRef, alignWidth: flo
     var val: float32 = app.getCacheVal().getFloat()
     
     if igSliderFloat(
-      cstring "##" & name, 
+      cstring &"##{name}", 
       val.addr, 
       data["min"].getFloat(), 
       data["max"].getFloat(), 
@@ -68,7 +68,7 @@ proc drawSetting(app: var App, name: string, data: TomlValueRef, alignWidth: flo
     var val = app.getCacheVal().getInt().int32
     
     if igInputInt(
-      cstring "##" & name, 
+      cstring &"##{name}", 
       val.addr, 
       data["step"].getInt().int32, 
       data["step_fast"].getInt().int32, 
@@ -80,11 +80,11 @@ proc drawSetting(app: var App, name: string, data: TomlValueRef, alignWidth: flo
     var val = app.getCacheVal().getFloat().float32
 
     if igInputFloat(
-      cstring "##" & name, 
+      cstring &"##{name}", 
       val.addr, 
       data["step"].getFloat(), 
       data["step_fast"].getFloat(), 
-      data["format"].getString().cstring,
+      cstring data["format"].getString(),
       flags
     ):
       app.addToCache(val.newTFloat())
@@ -95,11 +95,11 @@ proc drawSetting(app: var App, name: string, data: TomlValueRef, alignWidth: flo
     if currentItem.kind == TomlKind.Int:
       currentItem = data["items"][int currentItem.getInt()]
 
-    if igBeginCombo(cstring "##" & name, currentItem.getString().cstring, flags):
+    if igBeginCombo(cstring &"##{name}", cstring currentItem.getString(), flags):
 
       for i in data["items"].getArray():
         let selected = currentItem == i
-        if igSelectable(i.getString().cstring, selected):
+        if igSelectable(cstring i.getString(), selected):
           app.addToCache(i)
 
         if selected:
@@ -115,7 +115,7 @@ proc drawSetting(app: var App, name: string, data: TomlValueRef, alignWidth: flo
       currentItem = app.getCacheVal().getInt().int32
 
     for e, i in data["items"].getArray():
-      if igRadioButton(i.getString().cstring, currentItem.addr, e.int32):
+      if igRadioButton(cstring i.getString(), currentItem.addr, e.int32):
         app.addToCache(i)
       
       if e < data["items"].getArray().high:
@@ -124,7 +124,7 @@ proc drawSetting(app: var App, name: string, data: TomlValueRef, alignWidth: flo
     let flags = getFlags[ImGuiColorEditFlags](data["flags"])
     var col = app.getCacheVal().parseColor3()
 
-    if igColorEdit3(cstring "##" & name, col, flags):
+    if igColorEdit3(cstring &"##{name}", col, flags):
       var color = newTArray()
       color.add col[0].newTFloat()
       color.add col[1].newTFloat()
@@ -134,7 +134,7 @@ proc drawSetting(app: var App, name: string, data: TomlValueRef, alignWidth: flo
     let flags = getFlags[ImGuiColorEditFlags](data["flags"])
     var col = app.getCacheVal().parseColor4()
     
-    if igColorEdit4(cstring "##" & name, col, flags):
+    if igColorEdit4(cstring &"##{name}", col, flags):
       var color = newTArray()
       color.add col[0].newTFloat()
       color.add col[1].newTFloat()
@@ -144,7 +144,7 @@ proc drawSetting(app: var App, name: string, data: TomlValueRef, alignWidth: flo
   of Section:
     let flags = getFlags[ImGuiTreeNodeFlags](data["flags"])
 
-    if igCollapsingHeader(label.cstring, flags):
+    if igCollapsingHeader(cstring label, flags):
       if parent.len > 0:
         raise newException(ValueError, "Nested sections are not supported. Implement your own")
       else:
@@ -168,7 +168,7 @@ proc calcAlignWidth(settings: TomlValueRef): float32 =
     if parseEnum[SettingTypes](data["type"]) == Section:
       width = calcAlignWidth(data["content"])
     else:
-      width = igCalcTextSize(cstring label & ": ").x
+      width = igCalcTextSize(cstring &"{label}: ").x
 
     if width > result: 
       result = width

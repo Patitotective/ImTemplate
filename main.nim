@@ -1,4 +1,4 @@
-import std/[strutils, os]
+import std/[strformat, strutils, os]
 
 import imstyle
 import niprefs
@@ -29,7 +29,7 @@ proc drawAboutModal(app: App) =
   igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))
 
   let unusedOpen = true # Passing this parameter creates a close button
-  if igBeginPopupModal(cstring "About " & app.config["name"].getString(), unusedOpen.unsafeAddr, flags = makeFlags(ImGuiWindowFlags.NoResize)):
+  if igBeginPopupModal(cstring &"About {app.config[\"name\"].getString()}###about", unusedOpen.unsafeAddr, flags = makeFlags(ImGuiWindowFlags.NoResize)):
     # Display icon image
     var texture: GLuint
     var image = app.config["iconPath"].getData().readImageFromMemory()
@@ -38,7 +38,7 @@ proc drawAboutModal(app: App) =
 
     igImage(cast[ptr ImTextureID](texture), igVec2(64, 64)) # Or igVec2(image.width.float32, image.height.float32)
     if igIsItemHovered():
-      igSetTooltip(cstring app.config["website"].getString() & " " & FA_ExternalLink)
+      igSetTooltip(cstring &"{app.config[\"website\"].getString()} {FA_ExternalLink}")
       
       if igIsMouseClicked(ImGuiMouseButton.Left):
         app.config["website"].getString().openURL()
@@ -46,7 +46,7 @@ proc drawAboutModal(app: App) =
     igSameLine()
     
     igPushTextWrapPos(250)
-    igTextWrapped(app.config["comment"].getString().cstring)
+    igTextWrapped(cstring app.config["comment"].getString())
     igPopTextWrapPos()
 
     igSpacing()
@@ -65,13 +65,13 @@ proc drawAboutModal(app: App) =
         if igSelectable(cstring name) and url.len > 0:
             url.openURL()
         if igIsItemHovered() and url.len > 0:
-          igSetTooltip(cstring url & " " & FA_ExternalLink)
+          igSetTooltip(cstring &"{url} {FA_ExternalLink}")
       
       igEndChild()
 
     igSpacing()
 
-    igText(app.config["version"].getString().cstring)
+    igText(cstring app.config["version"].getString())
 
     igEndPopup()
 
@@ -95,7 +95,7 @@ proc drawMainMenuBar(app: var App) =
       if igMenuItem("Website " & FA_ExternalLink):
         app.config["website"].getString().openURL()
 
-      igMenuItem(cstring "About " & app.config["name"].getString(), shortcut = nil, p_selected = openAbout.addr)
+      igMenuItem(cstring &"About {app.config[\"name\"].getString()}", shortcut = nil, p_selected = openAbout.addr)
 
       igEndMenu() 
 
@@ -105,7 +105,7 @@ proc drawMainMenuBar(app: var App) =
   if openPrefs:
     igOpenPopup("Preferences")
   if openAbout:
-    igOpenPopup(cstring "About " & app.config["name"].getString())
+    igOpenPopup("###about")
 
   # These modals will only get drawn when igOpenPopup(name) are called, respectly
   app.drawAboutModal()
