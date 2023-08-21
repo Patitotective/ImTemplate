@@ -33,7 +33,7 @@ Template for making a single-windowed (or not) Dear ImGui application in Nim.
 - `src`:
   - `icons.nim`: Helper module with [ForkAwesome](https://forkaweso.me) icons unicode points.
   - `utils.nim`: Useful procedures, general types or anything used by more than one module.
-  - `prefsmodal.nim`: Draw the preferences modal (called in `main.nim`)
+  - `settingsmodal.nim`: Draw the preferences modal (called in `main.nim`)
 
 ## Icon Font
 ImTemplate uses [ForkAwesome](https://forkaweso.me)'s icon font to be able to display icon in labes, to do it you only need to import [`icons.nim`](https://github.com/Patitotective/ImTemplate/blob/main/src/icons.toml) (where the unicode points for each icon are defined), browse https://forkaweso.me/Fork-Awesome/icons, choose the one you want and, for example, if you want to use [`fa-floppy-o`](https://forkaweso.me/Fork-Awesome/icon/floppy-o/), you will write `FA_FloppyO` in a string:

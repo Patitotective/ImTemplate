@@ -2,7 +2,7 @@ name: CI
 on:
   push:
   pull_request:
-    branches: [ main ]
+    branches: [ main, devel ]
 
 jobs:
   appimage:
@@ -16,8 +16,7 @@ jobs:
 
       - name: Build
         run: |
-          nimble install -d -y
-          nake build
+          nimble buildapp
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
@@ -33,7 +32,7 @@ jobs:
       - uses: iffy/install-nim@v4.1.1
 
       - name: Build
-        run: nimble buildApp
+        run: nimble buildr
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:

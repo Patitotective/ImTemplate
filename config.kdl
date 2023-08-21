@@ -1,0 +1,96 @@
+// App
+name "ImExample"
+comment "ImExample is a simple Dear ImGui application example"
+version "1.0.0"
+website "https://github.com/Patitotective/ImTemplate"
+authors {
+  - "Patitotective" "https://github.com/Patitotective"
+  - "Cristobal" "mailto:cristobalriaga@gmail.com"
+  - "Omar Cornut" "https://github.com/ocornut"
+  - "Beef, Yard, Rika"
+  - "and the Nim community :]"
+  - "Inu147"
+}
+categories "Utility"
+
+stylePath "assets/style.kdl"
+iconPath "assets/icon.png"
+svgIconPath "assets/icon.svg"
+
+fonts iconFontPath="assets/forkawesome-webfont.ttf" {
+  - "assets/ProggyVector Regular.ttf" 16 // Other options are Roboto-Regular.ttf, Cousine-Regular.ttf or Karla-Regular.ttf
+  - "assets/NotoSansJP-Regular.otf" 16
+}
+
+// AppImage
+ghRepo "Patitotective" "ImTemplate"
+
+// Window
+minSize 200 200 // Width, height
+
+// Settings modal
+showSettings false
+settings {
+  input type="input" {
+    maxbuf 100
+    flags "None" // See https://nimgl.dev/docs/imgui.html#ImGuiInputTextFlags
+    help "Help message"
+  }
+  hint-input type="input" display="Input with hint" {
+    max 100
+    hint "type something"
+    help "Help message"
+    flags "None" // See https://nimgl.dev/docs/imgui.html#ImGuiInputTextFlags
+  }
+  checkbox type="check"
+  combo type="combo" {
+    items "a" "b" "c"
+    flags "None" // See https://nimgl.dev/docs/imgui.html#ImGuiComboFlags
+  }
+  radio type="radio" {
+    items "a" "b" "c"
+  }
+  os type="section" display="File dialogs" {
+    flags "None" // See https://nimgl.dev/docs/imgui.html#ImGuiTreeNodeFlags
+    content {
+      file type="file" {filterPatterns "*.txt" "*.nim" "*.kdl" "*.nimble" "*.nims"; singleFilterDescription "Some neat files"}
+      files type="files"
+      folder type="folder"
+    }
+  }
+  numbers type="section" display="Spinners and sliders" {
+    flags "None" // See https://nimgl.dev/docs/imgui.html#ImGuiTreeNodeFlags
+    content {
+      slider type="slider" {
+        min 0; max 9
+        format "%d"
+        flags "None" // See https://nimgl.dev/docs/imgui.html#ImGuiSliderFlags
+      }
+      floatSlider type="fslider" display="Float slider" {
+        min 0; max 5
+        format "%.1f"
+        flags "None" // See https://nimgl.dev/docs/imgui.html#ImGuiSliderFlags
+      }
+      spin type="spin" {
+        step 1; stepfast 10
+        flag "None" // See https://nimgl.dev/docs/imgui.html#ImGuiInputTextFlags
+      }
+      floatSpin type="fspin" display="Float spin" {
+        step 1; stepfast 10
+        format "%.1f"
+        flags "None" // See https://nimgl.dev/docs/imgui.html#ImGuiInputTextFlags
+      }
+    }
+  }
+  colors type="section" display="Color pickers" {
+    flags "None" // See https://nimgl.dev/docs/imgui.html#ImGuiTreeNodeFlags
+    content {
+      rgb type="rgb" display="RGB color" {
+        flags "None" // See https://nimgl.dev/docs/imgui.html#ImGuiColorEditFlags
+      }
+      rgba type="rgba" display="RGBA color" {
+        flags "AlphaBar" "AlphaPreviewHalf" // See https://nimgl.dev/docs/imgui.html#ImGuiColorEditFlags
+      }
+    }
+  }
+}

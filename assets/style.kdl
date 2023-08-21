@@ -1,0 +1,95 @@
+alpha 1
+disabledAlpha 0.4000000059604645
+windowPadding 10 10
+windowRounding 0
+windowBorderSize 0
+windowMinSize 50 50
+windowTitleAlign 0.5 0.5
+windowMenuButtonPosition "Left"
+childRounding 0
+childBorderSize 1
+popupRounding 1
+popupBorderSize 1
+framePadding 5 3
+frameRounding 3
+frameBorderSize 0
+itemSpacing 6 6
+itemInnerSpacing 3 2
+cellPadding 3 3
+// touchExtraPadding 0.0 0.0
+indentSpacing 10
+columnsMinSpacing 6
+scrollbarSize 13
+scrollbarRounding 16
+grabMinSize 20
+grabRounding 4
+// logSliderDeadzone 4.0
+tabRounding 4
+tabBorderSize 1
+tabMinWidthForCloseButton 0
+colorButtonPosition "Right"
+buttonTextAlign 0.5 0.5
+selectableTextAlign 0 0
+// displayWindowPadding 19.0 19.0
+// displaySafeAreaPadding 3.0 3.0
+// mouseCursorScale 1.0
+// antiAliasedLines true
+// antiAliasedLinesUseTex true
+// antiAliasedFill true
+// curveTessellationTol 1.25
+// circleTessellationMaxError 0.300000011920929
+colors {
+  Text 219 237 226 255
+  TextDisabled 133 140 136 255
+  WindowBg 33 35 43 255
+  ChildBg 38 40 48 255
+  PopupBg 51 56 68 255
+  Border 35 29 34 255
+  BorderShadow 0 0 0 255
+  FrameBg 43 47 59 255
+  FrameBgHovered 116 50 76 255
+  FrameBgActive 116 50 76 255
+  TitleBg 59 51 69 255
+  TitleBgActive 128 19 65 255
+  TitleBgCollapsed 51 56 68 255
+  MenuBarBg 51 56 68 255
+  ScrollbarBg 61 61 56 255
+  ScrollbarGrab 99 99 95 255
+  ScrollbarGrabHovered 177 177 175 255
+  ScrollbarGrabActive 177 177 175 255
+  CheckMark 168 35 45 255
+  SliderGrab 166 38 88 255
+  SliderGrabActive 181 56 68 255
+  Button 166 38 88 255
+  ButtonHovered 116 50 76 255
+  ButtonActive 116 50 76 255
+  Header 116 50 76 255
+  HeaderHovered 166 38 88 255
+  HeaderActive 128 19 65 255
+  Separator 109 109 127 255
+  SeparatorHovered 25 102 191 255
+  SeparatorActive 25 102 191 255
+  ResizeGrip 166 38 88 255
+  ResizeGripHovered 116 50 76 255
+  ResizeGripActive 116 50 76 255
+  Tab 45 89 147 255
+  TabHovered 66 150 249 255
+  TabActive 50 104 173 255
+  TabUnfocused 17 26 37 255
+  TabUnfocusedActive 34 66 108 255
+  PlotLines 219 237 226 255
+  PlotLinesHovered 116 50 76 255
+  PlotHistogram 79 198 50 255
+  PlotHistogramHovered 116 50 76 255
+  TableHeaderBg 48 48 51 255
+  TableBorderStrong 79 79 89 255
+  TableBorderLight 58 58 63 255
+  TableRowBg 0 0 0 255
+  TableRowBgAlt 255 255 255 255
+  TextSelectedBg 98 160 234 255
+  DragDropTarget 255 255 0 255
+  NavHighlight 66 150 249 255
+  NavWindowingHighlight 255 255 255 255
+  NavWindowingDimBg 204 204 204 255
+  ModalWindowDimBg 204 204 204 76
+}
