@@ -6,10 +6,13 @@ import nimgl/imgui
 
 import utils, icons, types
 
-proc drawSettings(settings: var object, settingsConfig: OrderedTable[string, Setting], maxLabelWidth: float32) = 
+proc drawSettings(app: var App) =
+  inputText("Input", app.settings.input)
+
+  return
   for name, field in settings.fieldPairs:
     var key: string
-    
+
     for k in settingsConfig.keys:
       if k.eqIdent name:
         key = k
@@ -45,11 +48,11 @@ proc drawSettings(settings: var object, settingsConfig: OrderedTable[string, Set
       assert data.min.isSome and data.max.isSome
       when field is int32:
         igSliderInt(
-          id, 
-          field.addr, 
-          int32 data.min.get, 
-          int32 data.max.get, 
-          cstring (if data.format.isSome: data.format.get else: "%d"), 
+          id,
+          field.addr,
+          int32 data.min.get,
+          int32 data.max.get,
+          cstring (if data.format.isSome: data.format.get else: "%d"),
           parseMakeFlags[ImGuiSliderFlags](data.flags)
         )
     of stFSlider:
@@ -57,37 +60,37 @@ proc drawSettings(settings: var object, settingsConfig: OrderedTable[string, Set
       assert data.min.isSome and data.max.isSome
       when field is float32:
         igSliderFloat(
-          id, 
-          field.addr, 
-          data.min.get, 
-          data.max.get, 
-          cstring (if data.format.isSome: data.format.get else: "%.3f"), 
+          id,
+          field.addr,
+          data.min.get,
+          data.max.get,
+          cstring (if data.format.isSome: data.format.get else: "%.3f"),
           parseMakeFlags[ImGuiSliderFlags](data.flags)
         )
-    of stSpin:    
+    of stSpin:
       assert field is int32
       when field is int32:
         var temp = field
         if igInputInt(
-          id, 
-          temp.addr, 
-          int32 data.step, 
-          int32 data.stepfast, 
+          id,
+          temp.addr,
+          int32 data.step,
+          int32 data.stepfast,
           parseMakeFlags[ImGuiInputTextFlags](data.flags)
-        ) and (data.min.isNone or temp >= int32(data.min.get)) and (data.max.isNone or temp <= int32(data.max.get)): 
+        ) and (data.min.isNone or temp >= int32(data.min.get)) and (data.max.isNone or temp <= int32(data.max.get)):
           field = temp
     of stFSpin:
       assert field is float32
       when field is float32:
         var temp = field
         if igInputFloat(
-          id, 
-          temp.addr, 
-          data.step, 
-          data.stepfast, 
-          cstring (if data.format.isSome: data.format.get else: "%.3f"), 
+          id,
+          temp.addr,
+          data.step,
+          data.stepfast,
+          cstring (if data.format.isSome: data.format.get else: "%.3f"),
           parseMakeFlags[ImGuiInputTextFlags](data.flags)
-        ) and (data.min.isNone or temp >= data.min.get) and (data.max.isNone or temp <= data.max.get): 
+        ) and (data.min.isNone or temp >= data.min.get) and (data.max.isNone or temp <= data.max.get):
           field = temp
     of stCombo:
       assert field is enum
@@ -99,14 +102,14 @@ proc drawSettings(settings: var object, settingsConfig: OrderedTable[string, Set
               field = itenum
 
           igEndCombo()
-    of stRadio: 
+    of stRadio:
       assert field is enum
       when field is enum:
         for e, item in data.items:
           let itenum = parseEnum[typeof field](item)
           if igRadioButton(cstring $itenum & "##" & name & $e, itenum == field):
             field = itenum
-        
+
           if e < data.items.high:
             igSameLine()
     of stRGB:
@@ -166,7 +169,7 @@ proc drawSettings(settings: var object, settingsConfig: OrderedTable[string, Set
       igSameLine()
       igHelpMarker(data.help)
 
-proc calcMaxLabelWidth(settings: OrderedTable[string, Setting]): float32 = 
+proc calcMaxLabelWidth(settings: OrderedTable[string, Setting]): float32 =
   for name, data in settings:
     let label = cstring (if data.display.len > 0: data.display else: name.capitalizeAscii()) & ": "
 
@@ -178,7 +181,7 @@ proc calcMaxLabelWidth(settings: OrderedTable[string, Setting]): float32 =
       ); width > result):
       result = width
 
-proc drawSettingsmodal*(app: var App) = 
+proc drawSettingsmodal*(app: var App) =
   if app.settingsmodal.maxLabelWidth <= 0:
     app.settingsmodal.maxLabelWidth = app.config.settings.calcMaxLabelWidth()
 
@@ -188,14 +191,14 @@ proc drawSettingsmodal*(app: var App) =
     var close = false
 
     # app.settingsmodal.cache must be set to app.prefs[settings] once when opening the modal
-    drawSettings(app.settingsmodal.cache, app.config.settings, app.settingsmodal.maxLabelWidth)
+    app.drawSettings()
 
     igSpacing()
 
     if igButton("Save"):
       app.prefs.content.settings = app.settingsmodal.cache
       igCloseCurrentPopup()
-    
+
     igSameLine()
 
     if igButton("Cancel"):
@@ -222,7 +225,7 @@ proc drawSettingsmodal*(app: var App) =
         igCloseCurrentPopup()
 
       igSameLine()
-    
+
       if igButton("Cancel"):
         igCloseCurrentPopup()
 

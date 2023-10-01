@@ -14,12 +14,12 @@ when defined(release):
 # TODO make configuration or at least settings inside the code and nto in the configuration file
 # TODO be able to reset single preferences to their default value
 
-const configPath {.strdefine.} = "config.kdl"
+# const configPath {.strdefine.} = "config.kdl"
 
-proc getConfigDir(app: App): string = 
+proc getConfigDir(app: App): string =
   getConfigDir() / app.config.name
 
-proc drawAboutModal(app: App) = 
+proc drawAboutModal(app: App) =
   var center: ImVec2
   getCenterNonUDT(center.addr, igGetMainViewport())
   igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))
@@ -35,12 +35,12 @@ proc drawAboutModal(app: App) =
     igImage(cast[ptr ImTextureID](texture), igVec2(64, 64)) # Or igVec2(image.width.float32, image.height.float32)
     if igIsItemHovered() and app.config.website.len > 0:
       igSetTooltip(cstring app.config.website & " " & FA_ExternalLink)
-      
+
       if igIsMouseClicked(ImGuiMouseButton.Left):
         app.config.website.openURL()
 
     igSameLine()
-    
+
     igPushTextWrapPos(250)
     igTextWrapped(cstring app.config.comment)
     igPopTextWrapPos()
@@ -58,7 +58,7 @@ proc drawAboutModal(app: App) =
           url.openURL()
         if igIsItemHovered() and url.len > 0:
           igSetTooltip(cstring url & " " & FA_ExternalLink)
-      
+
       igEndChild()
 
     igSpacing()
@@ -89,7 +89,7 @@ proc drawMainMenuBar(app: var App) =
 
       igMenuItem(cstring "About " & app.config.name, shortcut = nil, p_selected = openAbout.addr)
 
-      igEndMenu() 
+      igEndMenu()
 
     igEndMainMenuBar()
 
@@ -105,8 +105,8 @@ proc drawMainMenuBar(app: var App) =
   app.drawSettingsmodal()
 
 proc drawMain(app: var App) = # Draw the main window
-  let viewport = igGetMainViewport()  
-  
+  let viewport = igGetMainViewport()
+
   app.drawMainMenuBar()
   # Work area is the entire viewport minus main menu bar, task bars, etc.
   igSetNextWindowPos(viewport.workPos)
@@ -120,7 +120,7 @@ proc drawMain(app: var App) = # Draw the main window
 
     app.fonts[1].igPushFont()
     igText("Unicode fonts (NotoSansJP-Regular.otf)")
-    igText("「僕だけがいない街」が好きだった " & FA_SmileO)
+    igText("日本語がいいですね。 " & FA_SmileO)
     igPopFont()
 
   igEnd()
@@ -148,12 +148,12 @@ proc render(app: var App) = # Called in the main loop
   glClearColor(bgColor.x, bgColor.y, bgColor.z, bgColor.w)
   glClear(GL_COLOR_BUFFER_BIT)
 
-  igOpenGL3RenderDrawData(igGetDrawData())  
+  igOpenGL3RenderDrawData(igGetDrawData())
 
   app.win.makeContextCurrent()
   app.win.swapBuffers()
 
-proc initWindow(app: var App) = 
+proc initWindow(app: var App) =
   glfwWindowHint(GLFWContextVersionMajor, 3)
   glfwWindowHint(GLFWContextVersionMinor, 3)
   glfwWindowHint(GLFWOpenglForwardCompat, GLFW_TRUE)
@@ -163,9 +163,9 @@ proc initWindow(app: var App) =
     glfwWindowHint(GLFWMaximized, GLFW_TRUE)
 
   app.win = glfwCreateWindow(
-    app.prefs[winsize].x, 
-    app.prefs[winsize].y, 
-    cstring app.config.name, 
+    app.prefs[winsize].x,
+    app.prefs[winsize].y,
+    cstring app.config.name,
     icon = false # Do not use default icon
   )
 
@@ -188,40 +188,40 @@ proc initWindow(app: var App) =
     monitors[0].getMonitorPos(monitorX.addr, monitorY.addr)
     app.win.getWindowSize(width.addr, height.addr)
     app.win.setWindowPos(
-      monitorX + int32((videoMode.width - width) / 2), 
+      monitorX + int32((videoMode.width - width) / 2),
       monitorY + int32((videoMode.height - height) / 2)
     )
   else:
     app.win.setWindowPos(app.prefs[winpos].x, app.prefs[winpos].y)
 
-proc initPrefs(app: var App) = 
+proc initPrefs(app: var App) =
   app.prefs = initKPrefs(
-    path = (app.getConfigDir() / "prefs").changeFileExt("kdl"), 
+    path = (app.getConfigDir() / "prefs").changeFileExt("kdl"),
     default = Prefs(
-      maximized: false, 
+      maximized: false,
       winpos: (-1i32, -1i32), # Negative numbers center the window
-      winsize: (600i32, 650i32), 
+      winsize: (600i32, 650i32),
       settings: Settings(
-        input: "Hello World", 
-        hintInput: "", 
-        checkbox: true, 
-        combo: Abc.C, 
-        radio: Abc.A, 
+        input: "Hello World",
+        hintInput: "",
+        checkbox: true,
+        combo: Abc.C,
+        radio: Abc.A,
         numbers: Numbers(
-          slider: 4, 
-          floatSlider: 2.5, 
-          spin: 4, 
-          floatSpin: 3.14, 
-        ), 
+          slider: 4,
+          floatSlider: 2.5,
+          spin: 4,
+          floatSpin: 3.14,
+        ),
         colors: Colors(
-          rgb: (1.0f, 0.0f, 0.2f), 
-          rgba: (0.4f, 0.7f, 0.0f, 0.5f), 
-        ), 
+          rgb: (1.0f, 0.0f, 0.2f),
+          rgba: (0.4f, 0.7f, 0.0f, 0.5f),
+        ),
       )
     )
   )
 
-proc checkSettings(app: App) = 
+proc checkSettings(app: App) =
   for name, field in app.settingsmodal.cache.fieldPairs:
     var found = false
     for key, _ in app.config.settings:
@@ -232,22 +232,21 @@ proc checkSettings(app: App) =
     if not found:
       raise newException(KeyError, name & " is not in defined in the config file")
 
-proc initApp(): App = 
+proc initApp(): App =
   when defined(release):
     result.resources = readResources()
 
-  result.config = result.res(configPath).parseKdl().decode(Config)
   result.checkSettings()
 
   result.initPrefs()
 
-template initFonts(app: var App) = 
+template initFonts(app: var App) =
   # Merge ForkAwesome icon font
   let config = utils.newImFontConfig(mergeMode = true)
   let ranges = [uint16 FA_Min, uint16 FA_Max]
 
   for e, (path, size) in app.config.fonts.fonts:
-    let glyph_ranges = 
+    let glyph_ranges =
       case e
       of 1: io.fonts.getGlyphRangesJapanese()
       else: nil
@@ -256,12 +255,12 @@ template initFonts(app: var App) =
     if app.config.fonts.iconFontPath.len > 0:
       io.fonts.igAddFontFromMemoryTTF(app.res(app.config.fonts.iconFontPath), size, config.unsafeAddr, ranges[0].unsafeAddr)
 
-proc terminate(app: var App) = 
+proc terminate(app: var App) =
   var x, y, width, height: int32
 
   app.win.getWindowPos(x.addr, y.addr)
   app.win.getWindowSize(width.addr, height.addr)
-  
+
   app.prefs[winpos] = (x, y)
   app.prefs[winsize] = (width, height)
   app.prefs[maximized] = app.win.getWindowAttrib(GLFWMaximized) == GLFW_TRUE
@@ -274,7 +273,7 @@ proc main() =
   # Setup Window
   doAssert glfwInit()
   app.initWindow()
-  
+
   app.win.makeContextCurrent()
   glfwSwapInterval(1) # Enable vsync
 
@@ -301,9 +300,9 @@ proc main() =
   # Cleanup
   igOpenGL3Shutdown()
   igGlfwShutdown()
-  
+
   igDestroyContext()
-  
+
   app.terminate()
   app.win.destroyWindow()
   glfwTerminate()

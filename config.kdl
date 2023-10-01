@@ -21,7 +21,6 @@ fonts iconFontPath="assets/forkawesome-webfont.ttf" {
   - "assets/ProggyVector Regular.ttf" 16 // Other options are Roboto-Regular.ttf, Cousine-Regular.ttf or Karla-Regular.ttf
   - "assets/NotoSansJP-Regular.otf" 16
 }
-
 // AppImage
 ghRepo "Patitotective" "ImTemplate"
 
@@ -94,3 +93,4 @@ settings {
     }
   }
 }
+
