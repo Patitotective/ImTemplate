@@ -226,7 +226,7 @@ Apps using this template:
 ## About
 - Icon Font: https://forkaweso.me (MIT).
 - GitHub: https://github.com/Patitotective/ImTemplate.
-- Discord: https://discord.gg/gdcPVjazCG.
+- Discord: https://discord.gg/U23ZQMsvwc.
 
 Contact me:
 - Discord: **Patitotective#0127**.
