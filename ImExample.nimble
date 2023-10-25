@@ -8,19 +8,18 @@ backend          = "cpp"
 # Dependencies
 
 requires "nim >= 1.6.2"
-requires "kdl >= 1.0.0"
+requires "kdl >= 1.2.4"
 requires "nimgl >= 1.3.2"
 requires "stb_image >= 2.5"
 requires "imstyle >= 1.0.0"
 requires "openurl >= 2.0.3"
 requires "tinydialogs >= 1.0.0"
+requires "constructor >= 1.1.4"
 
 import std/[strformat, options]
 import src/types
-import kdl
 
-const configPath {.strdefine.} = "config.kdl"
-const config = parseKdlFile(configPath).decode(Config)
+const config = initConfig()
 
 version          = config.version
 namedBin["main"] = config.name
@@ -59,12 +58,12 @@ task buildapp, "Build the AppImage":
 
   # Make desktop file
   writeFile(
-    &"AppDir/{config.name}.desktop", 
+    &"AppDir/{config.name}.desktop",
     desktop % [
-      "name", config.name, 
-      "categories", config.categories.join(";"), 
-      "version", config.version, 
-      "comment", config.comment, 
+      "name", config.name,
+      "categories", config.categories.join(";"),
+      "version", config.version,
+      "comment", config.comment,
       "arch", arch
     ]
   )

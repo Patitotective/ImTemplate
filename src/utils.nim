@@ -1,4 +1,4 @@
-import std/[typetraits, strutils, tables]
+import std/[typetraits, strutils, tables, os]
 import kdl, kdl/prefs
 import stb_image/read as stbi
 import nimgl/[imgui, glfw, opengl]
@@ -44,8 +44,8 @@ proc res*(app: App, path: string): string =
   when defined(release):
     app.resources[path]
   else:
+    assert path.fileExists(), path
     readFile(path)
-
 
 proc cmpIgnoreStyle(a, b: openarray[char], ignoreChars = {'_', '-'}): int =
   let aLen = a.len
@@ -204,15 +204,15 @@ proc loadTextureFromData*(data: var ImageData, outTexture: var GLuint) =
 
     glTexImage2D(GL_TEXTURE_2D, GLint 0, GL_RGBA.GLint, GLsizei data.width, GLsizei data.height, GLint 0, GL_RGBA, GL_UNSIGNED_BYTE, data.image[0].addr)
 
-template settingBefore() =
-  igText(id); igSameLine(0, 0)
-  igDummy(igVec2(maxLabelWidth - igCalcTextSize(id).x, 0))
-  igSameLine(0, 0)
+# template settingBefore() =
+#   igText(id); igSameLine(0, 0)
+#   igDummy(igVec2(maxLabelWidth - igCalcTextSize(id).x, 0))
+#   igSameLine(0, 0)
 
-proc inputText(id: string, value: var string, flags = 0.ImGuiInputTextFlags) =
-  let maxbuf = buffer.len + 1
-  let buffer = newString(maxbuf, value)
+# proc inputText(id: string, value: var string, flags = 0.ImGuiInputTextFlags) =
+#   let maxbuf = buffer.len + 1
+#   let buffer = newString(maxbuf, value)
 
-  if igInputText(cstring id, cstring buffer, flags):
-    value = buffer.cleanString()
+#   if igInputText(cstring id, cstring buffer, flags):
+#     value = buffer.cleanString()
 

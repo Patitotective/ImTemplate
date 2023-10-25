@@ -1,10 +1,10 @@
-import std/[strformat, strutils, tables]
+import std/[tables]
 
-import constructor/defaults
 import nimgl/[imgui, glfw]
+import constructor/defaults
 import kdl, kdl/types
 
-type # Config
+type
   SettingType* = enum
     stInput # Input text
     stCheck # Checkbox
@@ -21,27 +21,35 @@ type # Config
     stFiles # Multiple files picker
     stFolder # Folder picker
 
-  RGB* = tuple[r, g, b: range[0f..1f]]
-  RGBA* = tuple[r, g, b, a: range[0f..1f]]
+  RGB* = object
+    r*, g*, b*: range[0f..1f]
+
+  RGBA* = object
+    r*, g*, b*, a*: range[0f..1f]
+
+  Empty* = object # https://forum.nim-lang.org/t/10565
 
   # Because branches cannot have shared and additional fields right now (https://github.com/nim-lang/RFCs/issues/368)
   # There are some weird field names in the object below
   # S is the object for a section
-  Setting*[S: object or void] = object
+  Setting*[T: object or enum or bool] = object
     display*: string
     help*: string
     case kind*: SettingType
     of stInput:
       inputVal*, inputDefault*, inputCache*: string
       inputFlags*: seq[ImGuiInputTextFlags]
-      maxLength*: Option[uint]
+      limits*: HSlice[uint, Option[uint]]
       hint*: string
-    of stCombo, stRadio:
-      comboRadioVal*, comboRadioDefault*, comboRadioCache*: string
+    of stCombo:
+      comboVal*, comboDefault*, comboCache*: T
       comboFlags*: seq[ImGuiComboFlags]
-      items*: seq[string]
+      comboIncludeOnly*: seq[T]
+    of stRadio:
+      radioVal*, radioDefault*, radioCache*: T
+      radioIncludeOnly*: seq[T]
     of stSection:
-      content*: S
+      content*: T
       sectionFlags*: seq[ImGuiTreeNodeFlags]
     of stSlider:
       sliderVal*, sliderDefault*, sliderCache*: int32
@@ -83,27 +91,93 @@ type # Config
       rgbaVal*, rgbaDefault*, rgbaCache*: RGBA
       rgbaFlags*: seq[ImGuiColorEditFlags]
 
-proc inputSetting(display, help = "", default = "", hint = "", maxLength = uint.none, flags = newSeq[ImGuiInputTextFlags]()): Setting[void] =
-  ## If maxLength is none, the buffer size will be increased if the buffer also increases.
-  Setting[void](display: display, help: help, kind: stInput, inputDefault: default, hint: hint, maxLength: maxLength, inputFlags: flags)
+proc inputSetting(display, help, default, hint = "", limits = 0u..uint.none, flags = newSeq[ImGuiInputTextFlags]()): Setting[Empty] =
+  Setting[Empty](display: display, help: help, kind: stInput, inputDefault: default, hint: hint, limits: limits, inputFlags: flags)
 
-proc checkSetting(display, help = "", default: bool): Setting[void] =
-  Setting[void](display: display, help: help, kind: stCheck, checkDefault: default)
+proc checkSetting(display, help = "", default: bool): Setting[Empty] =
+  Setting[Empty](display: display, help: help, kind: stCheck, checkDefault: default)
 
-proc comboSetting(display, help = "", items: seq[string], default: string, flags = newSeq[ImGuiComboFlags]()): Setting[void] =
-  Setting[void](display: display, help: help, kind: stCombo, items: items, comboRadioDefault: default, comboFlags: flags)
+proc comboSetting[T: enum](display, help = "", default: T, includeOnly = newSeq[T](), flags = newSeq[ImGuiComboFlags]()): Setting[T] =
+  Setting[T](display: display, help: help, kind: stCombo, comboincludeOnly: includeOnly, comboDefault: default, comboFlags: flags)
+
+proc radioSetting[T: enum](display, help = "", default: T, includeOnly = newSeq[T]()): Setting[T] =
+  Setting[T](display: display, help: help, kind: stRadio, radioincludeOnly: includeOnly, radioDefault: default)
+
+proc sectionSetting[T: object](display, help = "", content: T, flags = newSeq[ImGuiTreeNodeFlags]()): Setting[T] =
+  Setting[T](display: display, help: help, kind: stSection, content: content, sectionFlags: flags)
+
+proc sliderSetting(display, help = "", default = 0i32, range: Slice[int32], format = "%d", flags = newSeq[ImGuiSliderFlags]()): Setting[Empty] =
+  Setting[Empty](display: display, help: help, kind: stSlider, sliderDefault: default, sliderRange: range, sliderFormat: format, sliderFlags: flags)
+
+proc fsliderSetting(display, help = "", default = 0f, range: Slice[float32], format = "%.2f", flags = newSeq[ImGuiSliderFlags]()): Setting[Empty] =
+  Setting[Empty](display: display, help: help, kind: stFSlider, fsliderDefault: default, fsliderRange: range, fsliderFormat: format, fsliderFlags: flags)
+
+proc spinSetting(display, help = "", default = 0i32, range: Slice[int32], step = 1i32, stepFast = 10i32, flags = newSeq[ImGuiInputTextFlags]()): Setting[Empty] =
+  Setting[Empty](display: display, help: help, kind: stSpin, spinDefault: default, spinRange: range, step: step, stepFast: stepFast, spinFlags: flags)
+
+proc fspinSetting(display, help = "", default = 0f, range: Slice[float32], step = 0.1f, stepFast = 1f, format = "%.2f", flags = newSeq[ImGuiInputTextFlags]()): Setting[Empty] =
+  Setting[Empty](display: display, help: help, kind: stFSpin, fspinDefault: default, fspinRange: range, fstep: step, fstepFast: stepFast, fspinFormat: format, fspinFlags: flags)
+
+proc fileSetting(display, help, default = "", filterPatterns = newSeq[string](), singleFilterDescription = ""): Setting[Empty] =
+  Setting[Empty](display: display, help: help, kind: stFile, fileDefault: default, fileFilterPatterns: filterPatterns, fileSingleFilterDescription: singleFilterDescription)
+
+proc filesSetting(display, help = "", default = newSeq[string](), filterPatterns = newSeq[string](), singleFilterDescription = ""): Setting[Empty] =
+  Setting[Empty](display: display, help: help, kind: stFiles, filesDefault: default, filesFilterPatterns: filterPatterns, filesSingleFilterDescription: singleFilterDescription)
+
+proc folderSetting(display, help, default = ""): Setting[Empty] =
+  Setting[Empty](display: display, help: help, kind: stFolder, folderDefault: default)
+
+proc rgbSetting(display, help = "", default: RGB, flags = newSeq[ImGuiColorEditFlags]()): Setting[Empty] =
+  Setting[Empty](display: display, help: help, kind: stRGB, rgbDefault: default, rgbFlags: flags)
+
+proc rgbaSetting(display, help = "", default: RGBA, flags = newSeq[ImGuiColorEditFlags]()): Setting[Empty] =
+  Setting[Empty](display: display, help: help, kind: stRGBA, rgbaDefault: default, rgbaFlags: flags)
+
+proc rgb*(r, g, b: float32): RGB = RGB(r: r, g: g, b: b)
+proc rgba*(r, g, b, a: float32): RGBA = RGBA(r: r, g: g, b: b, a: a)
 
 type
-  Settings* {.defaults.} = object
-    a* = inputSetting(display = "Text Input")
-    b* = inputSetting(display = "Text Input With Hint", help = "Maximum 10 characters", hint = "type something", maxLength = 10u.some)
-    c* = checkSetting(display = "Checkbox", default = false)
-    d* = comboSetting(display = "Combo", items = @["a", "b", "c"], default = "a")
+  Os* {.defaults: {}.} = object
+    file* = fileSetting(display = "Text File", filterPatterns = @["*.txt", "*.nim", "*.kdl", "*.json"])
+    files* = filesSetting(display = "Multiple files", singleFilterDescription = "Anything")
+    folder* = folderSetting(display = "Folder")
 
-implDefaults(Settings)
+  Numbers* {.defaults: {}.} = object
+    spin* = spinSetting(display = "Int Spinner", default = 4, range = 0i32..10i32)
+    fspin* = fspinSetting(display = "Float Spinner", default = 3.14, range = 0f..10f)
+    slider* = sliderSetting(display = "Int Slider", default = 40, range = -100i32..100i32)
+    fslider* = fsliderSetting(display = "Float Slider", default = -2.5, range = -10f..10f)
+
+  Colors* {.defaults: {}.} = object
+    rgb* = rgbSetting(default = rgb(1, 0, 0.2))
+    rgba* = rgbaSetting(default = rgba(0.4, 0.7, 0, 0.5), flags = @[AlphaBar, AlphaPreviewHalf])
+
+  Sizes* = enum
+    None, Huge, Big, Medium, Small, Mini
+
+  Settings* {.defaults: {}.} = object
+    input* = inputSetting(display = "Input", default = "Hello World")
+    input2* = inputSetting(display = "Custom Input", help = "Has a hint, 1 character minimum and 10 characters maximum and only accepts on return", hint = "Type...", limits = 1u..10u.some, flags = @[ImGuiInputTextFlags.EnterReturnsTrue])
+    check* = checkSetting(display = "Checkbox", default = true)
+    combo* = comboSetting[Sizes](display = "Combo box", default = None)
+    radio* = radioSetting[Sizes](display = "Radio button", includeOnly = @[Big, Medium, Small], default = Medium)
+    os* = sectionSetting(display = "File dialogs", content = initOs())
+    numbers* = sectionSetting(display = "Spinners and sliders", content = initNumbers())
+    colors* = sectionSetting(display = "Color pickers", content = initColors())
+
+  GlyphRanges* = enum
+    Default, ChineseFull, ChineseSimplified, Cyrillic, Japanese, Korean, Thai, Vietnamese
+
+  Font* = object
+    path*: string
+    size*: float32
+    glyphRanges*: GlyphRanges
+
+proc font*(path: string, size: float32, glyphRanges = GlyphRanges.Default): Font =
+  Font(path: path, size: size, glyphRanges: glyphRanges)
 
 type
-  Config* {.defaults.} = object
+  Config* {.defaults: {defExported}.} = object
     name* = "ImExample"
     comment* = "ImExample is a simple Dear ImGui application example"
     version* = "2.0.0"
@@ -123,38 +197,33 @@ type
     svgIconPath* = "assets/icon.svg"
 
     iconFontPath* = "assets/forkawesome-webfont.ttf"
-    fonts* = [ # [path, size]
-      (path: "assets/ProggyVector Regular.ttf", size: 16f), # Other options are Roboto-Regular.ttf, Cousine-Regular.ttf or Karla-Regular.ttf
-      ("assets/NotoSansJP-Regular.otf", 16f),
+    fonts* = [
+      font("assets/ProggyVector Regular.ttf", 16f), # Other options are Roboto-Regular.ttf, Cousine-Regular.ttf or Karla-Regular.ttf
+      font("assets/NotoSansJP-Regular.otf", 16f, GlyphRanges.Japanese),
     ]
 
     # AppImage
     ghRepo* = ["Patitotective", "ImTemplate"] # [username, repository]
 
     # Window
-    minSize* = [200, 200] # [width, height]
+    minSize* = (w: 200i32, h: 200i32) # < 0: don't care
 
-type
-  Prefs* = object
-    maximized*: bool
-    winpos*: tuple[x, y: int32]
-    winsize*: tuple[x, y: int32]
-    settings*: Settings
-
-  SettingsModal* = object
-    maxLabelWidth*: float32
+  Prefs* {.defaults: {defExported}.} = object
+    maximized* = false
+    winpos* = (x: -1i32, y: -1i32) # < 0: center the window
+    winsize* = (w: 600i32, h: 650i32)
+    settings* = initSettings()
 
   App* = object
     win*: GLFWWindow
     config*: Config
     prefs*: KdlPrefs[Prefs] # These are the values that will be saved in the config file
-    fonts*: array[2, ptr ImFont]
-    settingsmodal*: SettingsModal
+    fonts*: array[Config.fonts.len, ptr ImFont]
     resources*: Table[string, string]
 
-  ImageData* = tuple[image: seq[byte], width, height: int]
+    maxLabelWidth*: float32 # For the settings modal
 
-implDefaults(Config, {DefaultFlag.defExported})
+  ImageData* = tuple[image: seq[byte], width, height: int]
 
 # proc renameHook*(_: typedesc[Setting], fieldName: var string) =
 #   fieldName =
