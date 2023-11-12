@@ -1,5 +1,5 @@
-import std/[strutils, options, tables, os]
-
+import std/[typetraits, strutils, options, tables, macros, os]
+import micros
 import kdl/prefs
 import tinydialogs
 import nimgl/imgui
@@ -9,158 +9,124 @@ import utils, icons, types
 proc settingLabel(name: string, setting: Setting[auto]): cstring =
   cstring (if setting.display.len == 0: name else: setting.display) & ": "
 
-proc drawSettings(app: var App) =
-  for name, setting in app.prefs[settings].fieldPairs:
+proc drawSettings(settings: var object, maxLabelWidth: float32) =
+  for name, setting in settings.fieldPairs:
     let label = settingLabel(name, setting)
     let id = cstring "##" & name
     if setting.kind != stSection:
       igText(label); igSameLine(0, 0)
-      igDummy(igVec2(app.maxLabelWidth - igCalcTextSize(label).x, 0))
+      igDummy(igVec2(maxLabelWidth - igCalcTextSize(label).x, 0))
       igSameLine(0, 0)
 
     case setting.kind
     of stInput:
       let flags = makeFlags(setting.inputFlags)
-      let buffer = newString(100, setting.inputCache)
+      let buffer = newString(setting.limits.b, setting.inputCache)
 
       if setting.hint.len > 0:
-        if igInputTextWithHint(id, cstring setting.hint, cstring buffer, 100, flags):
-          setting.inputCache = buffer.cleanString()
+        if igInputTextWithHint(id, cstring setting.hint, cstring buffer, uint setting.limits.b, flags) and (let newBuffer = buffer.cleanString(); newBuffer.len >= setting.limits.a):
+          setting.inputCache = newBuffer
       else:
-        if igInputText(id, cstring buffer, 100, flags):
-          setting.inputCache = buffer.cleanString()
-    else: discard
-    # of stCheck:
-    #   assert field is bool
-    #   when field is bool:
-    #     igCheckbox(id, field.addr)
-    # of stSlider:
-    #   assert field is int32
-    #   assert setting.min.isSome and setting.max.isSome
-    #   when field is int32:
-    #     igSliderInt(
-    #       id,
-    #       field.addr,
-    #       int32 setting.min.get,
-    #       int32 setting.max.get,
-    #       cstring (if setting.format.isSome: setting.format.get else: "%d"),
-    #       parseMakeFlags[ImGuiSliderFlags](setting.flags)
-    #     )
-    # of stFSlider:
-    #   assert field is float32
-    #   assert setting.min.isSome and setting.max.isSome
-    #   when field is float32:
-    #     igSliderFloat(
-    #       id,
-    #       field.addr,
-    #       setting.min.get,
-    #       setting.max.get,
-    #       cstring (if setting.format.isSome: setting.format.get else: "%.3f"),
-    #       parseMakeFlags[ImGuiSliderFlags](setting.flags)
-    #     )
-    # of stSpin:
-    #   assert field is int32
-    #   when field is int32:
-    #     var temp = field
-    #     if igInputInt(
-    #       id,
-    #       temp.addr,
-    #       int32 setting.step,
-    #       int32 setting.stepfast,
-    #       parseMakeFlags[ImGuiInputTextFlags](setting.flags)
-    #     ) and (setting.min.isNone or temp >= int32(setting.min.get)) and (setting.max.isNone or temp <= int32(setting.max.get)):
-    #       field = temp
-    # of stFSpin:
-    #   assert field is float32
-    #   when field is float32:
-    #     var temp = field
-    #     if igInputFloat(
-    #       id,
-    #       temp.addr,
-    #       setting.step,
-    #       setting.stepfast,
-    #       cstring (if setting.format.isSome: setting.format.get else: "%.3f"),
-    #       parseMakeFlags[ImGuiInputTextFlags](setting.flags)
-    #     ) and (setting.min.isNone or temp >= setting.min.get) and (setting.max.isNone or temp <= setting.max.get):
-    #       field = temp
-    # of stCombo:
-    #   assert field is enum
-    #   when field is enum:
-    #     if igBeginCombo(id, cstring $field, parseMakeFlags[ImGuiComboFlags](setting.flags)):
-    #       for item in setting.items:
-    #         let itenum = parseEnum[typeof field](item)
-    #         if igSelectable(cstring item, field == itenum):
-    #           field = itenum
+        if igInputText(id, cstring buffer, uint setting.limits.b, flags) and (let newBuffer = buffer.cleanString(); newBuffer.len >= setting.limits.a):
+          setting.inputCache = newBuffer
+    of stCheck:
+      igCheckbox(id, setting.checkCache.addr)
+    of stSlider:
+      igSliderInt(
+        id,
+        setting.sliderCache.addr,
+        setting.sliderRange.a,
+        setting.sliderRange.b,
+        cstring setting.sliderFormat,
+        makeFlags(setting.sliderFlags)
+      )
+    of stFSlider:
+      igSliderFloat(
+        id,
+        setting.fsliderCache.addr,
+        setting.fsliderRange.a,
+        setting.fsliderRange.b,
+        cstring setting.fsliderFormat,
+        makeFlags(setting.fsliderFlags)
+      )
+    of stSpin:
+      var temp = setting.spinCache
+      if igInputInt(
+        id,
+        temp.addr,
+        setting.step,
+        setting.stepFast,
+        makeFlags(setting.spinflags)
+      ) and temp in setting.spinRange:
+        setting.spinCache = temp
+    of stFSpin:
+      var temp = setting.fspinCache
+      if igInputFloat(
+        id,
+        temp.addr,
+        setting.fstep,
+        setting.fstepFast,
+        cstring setting.fspinFormat,
+        makeFlags(setting.fspinflags)
+      ) and temp in setting.fspinRange:
+        setting.fspinCache = temp
+    of stCombo:
+      if igBeginCombo(id, cstring $setting.comboCache, makeFlags(setting.comboFlags)):
+        for item in setting.comboItems:
+          if igSelectable(cstring $item, item == setting.comboCache):
+            setting.comboCache = item
+        igEndCombo()
+    of stRadio:
+      echo name, " ", setting.radioItems
+      for e, item in setting.radioItems:
+        if igRadioButton(cstring $item & "##" & name, item == setting.radioCache):
+          setting.radioCache = item
 
-    #       igEndCombo()
-    # of stRadio:
-    #   assert field is enum
-    #   when field is enum:
-    #     for e, item in setting.items:
-    #       let itenum = parseEnum[typeof field](item)
-    #       if igRadioButton(cstring $itenum & "##" & name & $e, itenum == field):
-    #         field = itenum
-
-    #       if e < setting.items.high:
-    #         igSameLine()
-    # of stRGB:
-    #   assert field is tuple[r, g, b: float32]
-    #   when field is tuple[r, g, b: float32]:
-    #     var colArray = [field.r, field.g, field.b]
-    #     if igColorEdit3(id, colArray, parseMakeFlags[ImGuiColorEditFlags](setting.flags)):
-    #       field = (colArray[0], colArray[1], colArray[2])
-    # of stRGBA:
-    #   assert field is tuple[r, g, b, a: float32]
-    #   when field is tuple[r, g, b, a: float32]:
-    #     var colArray = [field.r, field.g, field.b, field.a]
-    #     if igColorEdit4(id, colArray, parseMakeFlags[ImGuiColorEditFlags](setting.flags)):
-    #       field = (colArray[0], colArray[1], colArray[2], colArray[3])
-    # of stFile:
-    #   assert field is string
-    #   when field is string:
-    #     igPushID(id)
-    #     igInputTextWithHint(id, "Nothing selected", cstring field, uint field.len, flags = ImGuiInputTextFlags.ReadOnly)
-    #     igSameLine()
-    #     if (igIsItemHovered(flags = AllowWhenDisabled) and igIsMouseDoubleClicked(ImGuiMouseButton.Left)) or igButton("Browse " & FA_FolderOpen):
-    #       if (let path = openFileDialog("Choose File", getCurrentDir() / "\0", setting.filterPatterns, setting.singleFilterDescription); path.len > 0):
-    #         field = path
-    #     igPopID()
-    # of stFiles:
-    #   assert field is seq[string]
-    #   when field is seq[string]:
-    #     let str = field.join(",")
-    #     igPushID(id)
-    #     igInputTextWithHint(id, "Nothing selected", cstring str, uint str.len, flags = ImGuiInputTextFlags.ReadOnly)
-    #     igSameLine()
-    #     if (igIsItemHovered(flags = AllowWhenDisabled) and igIsMouseDoubleClicked(ImGuiMouseButton.Left)) or igButton("Browse " & FA_FolderOpen):
-    #       if (let paths = openMultipleFilesDialog("Choose Files", getCurrentDir() / "\0", setting.filterPatterns, setting.singleFilterDescription); paths.len > 0):
-    #         field = paths
-    #     igPopID()
-    # of stFolder:
-    #   assert field is string
-    #   when field is string:
-    #     igPushID(id)
-    #     igInputTextWithHint(id, "Nothing selected", cstring field, uint field.len, flags = ImGuiInputTextFlags.ReadOnly)
-    #     igSameLine()
-    #     if (igIsItemHovered(flags = AllowWhenDisabled) and igIsMouseDoubleClicked(ImGuiMouseButton.Left)) or igButton("Browse " & FA_FolderOpen):
-    #       if (let path = selectFolderDialog("Choose Folder", getCurrentDir() / "\0"); path.len > 0):
-    #         field = path
-    #     igPopID()
-    # of stSection:
-    #   assert field is object
-    #   when field is object:
-    #     igPushID(id)
-    #     if igCollapsingHeader(label, parseMakeFlags[ImGuiTreeNodeFlags](setting.flags)):
-    #       igIndent()
-    #       drawSettings(field, setting.content, maxLabelWidth)
-    #       igUnindent()
-    #     igPopID()
+        if e < setting.radioItems.high:
+          igSameLine()
+    of stRGB:
+      igColorEdit3(id, setting.rgbCache, makeFlags(setting.rgbFlags))
+    of stRGBA:
+      igColorEdit4(id, setting.rgbaCache, makeFlags(setting.rgbaFlags))
+    of stFile:
+      igPushID(id)
+      igInputTextWithHint("##input", "No file selected", cstring setting.fileCache, uint setting.fileCache.len, flags = ImGuiInputTextFlags.ReadOnly)
+      igSameLine()
+      if (igIsItemHovered(flags = AllowWhenDisabled) and igIsMouseDoubleClicked(ImGuiMouseButton.Left)) or igButton("Browse " & FA_FolderOpen):
+        if (let path = openFileDialog("Choose File", getCurrentDir() / "\0", setting.fileFilterPatterns, setting.fileSingleFilterDescription); path.len > 0):
+          setting.fileCache = path
+      igPopID()
+    of stFiles:
+      let files = setting.filesCache.join(",")
+      igPushID(id)
+      igInputTextWithHint("##input", "No files selected", cstring files, uint files.len, flags = ImGuiInputTextFlags.ReadOnly)
+      igSameLine()
+      if (igIsItemHovered(flags = AllowWhenDisabled) and igIsMouseDoubleClicked(ImGuiMouseButton.Left)) or igButton("Browse " & FA_FolderOpen):
+        if (let paths = openMultipleFilesDialog("Choose Files", getCurrentDir() / "\0", setting.filesFilterPatterns, setting.filesSingleFilterDescription); paths.len > 0):
+          setting.filesCache = paths
+      igPopID()
+    of stFolder:
+      igPushID(id)
+      igInputTextWithHint("##input", "No folder selected", cstring setting.folderCache, uint setting.folderCache.len, flags = ImGuiInputTextFlags.ReadOnly)
+      igSameLine()
+      if (igIsItemHovered(flags = AllowWhenDisabled) and igIsMouseDoubleClicked(ImGuiMouseButton.Left)) or igButton("Browse " & FA_FolderOpen):
+        if (let path = selectFolderDialog("Choose Folder", getCurrentDir() / "\0"); path.len > 0):
+          setting.folderCache = path
+      igPopID()
+    of stSection:
+      igPushID(id)
+      if igCollapsingHeader(label, makeFlags(setting.sectionFlags)):
+        igIndent()
+        when setting.content is object:
+          drawSettings(setting.content, maxLabelWidth)
+        igUnindent()
+      igPopID()
 
     if setting.help.len > 0:
       igSameLine()
       igHelpMarker(setting.help)
 
-proc calcMaxLabelWidth(settings: auto): float32 =
+proc calcMaxLabelWidth(settings: object): float32 =
   when settings is object:
     for name, setting in settings.fieldPairs:
       when setting is Setting:
@@ -168,7 +134,9 @@ proc calcMaxLabelWidth(settings: auto): float32 =
 
         let width =
           if setting.kind == stSection:
-            calcMaxLabelWidth(setting.content)
+            when setting.content is object:
+              calcMaxLabelWidth(setting.content)
+            else: 0f
           else:
             igCalcTextSize(label).x
         if width > result:
@@ -186,7 +154,7 @@ proc drawSettingsmodal*(app: var App) =
     var close = false
 
     # app.settingsmodal.cache must be set to app.prefs[settings] once when opening the modal
-    app.drawSettings()
+    drawSettings(app.prefs[settings], app.maxLabelWidth)
 
     igSpacing()
 

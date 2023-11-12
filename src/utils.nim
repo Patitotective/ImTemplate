@@ -26,15 +26,16 @@ proc pushString*(str: var string, val: string) =
   else:
     str[0..str.high] = val[0..str.high]
 
-proc newString*(length: int, default: string): string =
+proc newString*(length: Natural, default: string): string =
   result = newString(length)
   result.pushString(default)
 
 proc cleanString*(str: string): string =
-  if '\0' in str:
-    str[0..<str.find('\0')].strip()
-  else:
-    str.strip()
+  for e, c in str:
+    if c == '\0':
+      return str[0..<e].strip()
+
+  str.strip()
 
 proc updatePrefs*(app: var App) =
   # Update the values depending on the preferences here
@@ -72,8 +73,6 @@ proc cmpIgnoreStyle(a, b: openarray[char], ignoreChars = {'_', '-'}): int =
     inc j
 
 proc eqIdent*(v, a: openarray[char], ignoreChars = {'_', '-'}): bool = cmpIgnoreStyle(v, a, ignoreChars) == 0
-
-# ImGui
 
 proc `+`*(vec1, vec2: ImVec2): ImVec2 =
   ImVec2(x: vec1.x + vec2.x, y: vec1.y + vec2.y)

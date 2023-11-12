@@ -1,4 +1,4 @@
-import std/[strutils, os]
+import std/[threadpool, strutils, options, sugar, os]
 
 import imstyle
 import openurl
@@ -12,6 +12,8 @@ when defined(release):
   import resources
 
 # TODO be able to reset single preferences to their default value
+# TODO use app.config.name in thread workers
+# TODO receive thread channel messages
 
 proc getConfigDir(app: App): string =
   getConfigDir() / app.config.name
@@ -64,6 +66,16 @@ proc drawAboutModal(app: App) =
 
     igEndPopup()
 
+proc drawDialogModal(app: App) =
+  var center: ImVec2
+  getCenterNonUDT(center.addr, igGetMainViewport())
+  igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))
+
+  if igBeginPopupModal(cstring "External Dialog###dialog", flags = makeFlags(ImGuiWindowFlags.NoResize)):
+    igText("An external dialog is open, close it first to continue using the app.")
+
+    igEndPopup()
+
 proc drawMainMenuBar(app: var App) =
   var openAbout, openPrefs = false
 
@@ -76,7 +88,8 @@ proc drawMainMenuBar(app: var App) =
 
     if igBeginMenu("Edit"):
       if igMenuItem("Hello"):
-        discard messageBox(app.config.name, "Hello, earthling", DialogType.Ok, IconType.Info, Button.Yes)
+        let openDialog = (channel: ptr Channel[Message]) {.thread.} => channel[].send messageButton messageBox("", "Hello, earthling", DialogType.Ok, IconType.Info, Button.Yes)
+        app.dialogThread.createThread(openDialog, app.dialogChannel)
 
       igEndMenu()
 
@@ -102,6 +115,7 @@ proc drawMainMenuBar(app: var App) =
   app.drawAboutModal()
   app.drawSettingsmodal()
 
+
 proc drawMain(app: var App) = # Draw the main window
   let viewport = igGetMainViewport()
 
@@ -114,7 +128,8 @@ proc drawMain(app: var App) = # Draw the main window
     igText(FA_Info & " Application average %.3f ms/frame (%.1f FPS)", 1000f / igGetIO().framerate, igGetIO().framerate)
 
     if igButton("Click me"):
-      notifyPopup(app.config.name, "Do not do that again", IconType.Warning)
+      let openDialog = (_: ptr Channel[Message]) {.thread.} => notifyPopup("", "Do not do that again", IconType.Warning)
+      app.dialogThread.createThread(openDialog, nil)
 
     app.fonts[1].igPushFont()
     igText("Unicode fonts (NotoSansJP-Regular.otf)")
@@ -122,6 +137,10 @@ proc drawMain(app: var App) = # Draw the main window
     igPopFont()
 
   igEnd()
+
+  if app.dialogThread.running():
+    if (let (has, msg) = app.dialogChannel[].tryRecv; has):
+      echo msg
 
 proc render(app: var App) = # Called in the main loop
   # Poll and handle events (inputs, window resize, etc.)
@@ -208,6 +227,12 @@ proc initApp(): App =
     default = initPrefs()
   )
 
+  result.dialogChannel = cast[ptr Channel[Message]](
+    allocShared0(sizeof(Channel[Message]))
+  )
+
+  result.dialogChannel[].open()
+
 template initFonts(app: var App) =
   # Merge ForkAwesome icon font
   let config = utils.newImFontConfig(mergeMode = true)
@@ -242,6 +267,9 @@ proc terminate(app: var App) =
   app.prefs[maximized] = app.win.getWindowAttrib(GLFWMaximized) == GLFW_TRUE
 
   app.prefs.save()
+
+  app.dialogChannel[].close()
+  deallocShared(app.dialogChannel)
 
 proc main() =
   var app = initApp()

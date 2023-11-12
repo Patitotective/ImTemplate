@@ -1,7 +1,8 @@
-import std/[tables]
+import std/[threadpool, sequtils, tables, macros]
 
 import nimgl/[imgui, glfw]
 import constructor/defaults
+import tinydialogs
 import kdl, kdl/types
 
 type
@@ -21,33 +22,30 @@ type
     stFiles # Multiple files picker
     stFolder # Folder picker
 
-  RGB* = object
-    r*, g*, b*: range[0f..1f]
-
-  RGBA* = object
-    r*, g*, b*, a*: range[0f..1f]
+  RGB* = array[3, float32]
+  RGBA* = array[4, float32]
 
   Empty* = object # https://forum.nim-lang.org/t/10565
 
   # Because branches cannot have shared and additional fields right now (https://github.com/nim-lang/RFCs/issues/368)
   # There are some weird field names in the object below
   # S is the object for a section
-  Setting*[T: object or enum or bool] = object
+  Setting*[T: object or enum] = object
     display*: string
     help*: string
     case kind*: SettingType
     of stInput:
       inputVal*, inputDefault*, inputCache*: string
       inputFlags*: seq[ImGuiInputTextFlags]
-      limits*: HSlice[uint, Option[uint]]
+      limits*: Slice[int]
       hint*: string
     of stCombo:
       comboVal*, comboDefault*, comboCache*: T
       comboFlags*: seq[ImGuiComboFlags]
-      comboIncludeOnly*: seq[T]
+      comboItems*: seq[T]
     of stRadio:
       radioVal*, radioDefault*, radioCache*: T
-      radioIncludeOnly*: seq[T]
+      radioItems*: seq[T]
     of stSection:
       content*: T
       sectionFlags*: seq[ImGuiTreeNodeFlags]
@@ -85,23 +83,74 @@ type
     of stCheck:
       checkVal*, checkDefault*, checkCache*: bool
     of stRGB:
-      rgbVal*, rgbDefault*, rgbCache*: RGB
+      rgbVal*, rgbDefault*, rgbCache*: array[3, float32]
       rgbFlags*: seq[ImGuiColorEditFlags]
     of stRGBA:
       rgbaVal*, rgbaDefault*, rgbaCache*: RGBA
       rgbaFlags*: seq[ImGuiColorEditFlags]
 
-proc inputSetting(display, help, default, hint = "", limits = 0u..uint.none, flags = newSeq[ImGuiInputTextFlags]()): Setting[Empty] =
+# Taken from https://forum.nim-lang.org/t/6781#42294
+proc ifNeqRetFalse(fld,w,v:NimNode):NimNode =
+  quote do:
+    if `w`.`fld` != `v`.`fld`: return false
+proc genIfStmts(recList,i,j:NimNode):NimNode =
+  result = newStmtList()
+  case recList.kind
+  of nnkRecList:
+    for idDef in recList:
+      expectKind(idDef,nnkIdentDefs)
+      result.add idDef[0].ifNeqRetFalse(i,j)
+  of nnkIdentDefs:
+    result.add recList[0].ifNeqRetFalse(i,j)
+  else: error "expected RecList or IdentDefs got" & recList.repr
+
+macro equalsImpl[T:object](a,b:T): untyped =
+  template ifNeqRetFalse(fld:typed):untyped = ifNeqRetFalse(fld,a,b)
+  template genIfStmts(recList:typed):untyped = genIfStmts(recList,a,b)
+
+  let tImpl = a.getTypeImpl
+  result = newStmtList()
+  result.add quote do:
+    result = true
+  let records = tImpl[2]
+  records.expectKind(nnkRecList)
+  for field in records:
+    case field.kind
+    of nnkIdentDefs:
+      result.add field[0].ifNeqRetFalse
+    of nnkRecCase:
+      let discrim = field[0][0]
+      result.add discrim.ifNeqRetFalse
+      var casestmt = newNimNode(nnkCaseStmt)
+      casestmt.add newDotExpr(a,discrim)
+      for ofbranch in field[1..^1]:
+        case ofbranch.kind
+        of nnkOfBranch:
+          let testVal = ofbranch[0]
+          let reclst = ofbranch[1]
+          casestmt.add nnkOfBranch.newTree(testVal,reclst.genIfStmts)
+        of nnkElse:
+          let reclst = ofbranch[0]
+          casestmt.add nnkElse.newTree(reclst.genIfStmts)
+        else: error "Expected OfBranch or Else, got" & ofbranch.repr
+      result.add casestmt
+    else:
+      error "Expected IdentDefs or RecCase, got " & field.repr
+
+proc `==`*[T](a, b: Setting[T]): bool =
+  equalsImpl(a, b)
+
+proc inputSetting(display, help, default, hint = "", limits = 0..100, flags = newSeq[ImGuiInputTextFlags]()): Setting[Empty] =
   Setting[Empty](display: display, help: help, kind: stInput, inputDefault: default, hint: hint, limits: limits, inputFlags: flags)
 
 proc checkSetting(display, help = "", default: bool): Setting[Empty] =
   Setting[Empty](display: display, help: help, kind: stCheck, checkDefault: default)
 
-proc comboSetting[T: enum](display, help = "", default: T, includeOnly = newSeq[T](), flags = newSeq[ImGuiComboFlags]()): Setting[T] =
-  Setting[T](display: display, help: help, kind: stCombo, comboincludeOnly: includeOnly, comboDefault: default, comboFlags: flags)
+proc comboSetting[T: enum](display, help = "", default: T, items: seq[T], flags = newSeq[ImGuiComboFlags]()): Setting[T] =
+  Setting[T](display: display, help: help, kind: stCombo, comboItems: items, comboDefault: default, comboFlags: flags)
 
-proc radioSetting[T: enum](display, help = "", default: T, includeOnly = newSeq[T]()): Setting[T] =
-  Setting[T](display: display, help: help, kind: stRadio, radioincludeOnly: includeOnly, radioDefault: default)
+proc radioSetting[T: enum](display, help = "", default: T, items: seq[T]): Setting[T] =
+  Setting[T](display: display, help: help, kind: stRadio, radioItems: items, radioDefault: default)
 
 proc sectionSetting[T: object](display, help = "", content: T, flags = newSeq[ImGuiTreeNodeFlags]()): Setting[T] =
   Setting[T](display: display, help: help, kind: stSection, content: content, sectionFlags: flags)
@@ -133,9 +182,6 @@ proc rgbSetting(display, help = "", default: RGB, flags = newSeq[ImGuiColorEditF
 proc rgbaSetting(display, help = "", default: RGBA, flags = newSeq[ImGuiColorEditFlags]()): Setting[Empty] =
   Setting[Empty](display: display, help: help, kind: stRGBA, rgbaDefault: default, rgbaFlags: flags)
 
-proc rgb*(r, g, b: float32): RGB = RGB(r: r, g: g, b: b)
-proc rgba*(r, g, b, a: float32): RGBA = RGBA(r: r, g: g, b: b, a: a)
-
 type
   Os* {.defaults: {}.} = object
     file* = fileSetting(display = "Text File", filterPatterns = @["*.txt", "*.nim", "*.kdl", "*.json"])
@@ -149,18 +195,22 @@ type
     fslider* = fsliderSetting(display = "Float Slider", default = -2.5, range = -10f..10f)
 
   Colors* {.defaults: {}.} = object
-    rgb* = rgbSetting(default = rgb(1, 0, 0.2))
-    rgba* = rgbaSetting(default = rgba(0.4, 0.7, 0, 0.5), flags = @[AlphaBar, AlphaPreviewHalf])
+    rgb* = rgbSetting(default = [1f, 0f, 0.2f])
+    rgba* = rgbaSetting(default = [0.4f, 0.7f, 0f, 0.5f], flags = @[AlphaBar, AlphaPreviewHalf])
 
   Sizes* = enum
     None, Huge, Big, Medium, Small, Mini
 
   Settings* {.defaults: {}.} = object
     input* = inputSetting(display = "Input", default = "Hello World")
-    input2* = inputSetting(display = "Custom Input", help = "Has a hint, 1 character minimum and 10 characters maximum and only accepts on return", hint = "Type...", limits = 1u..10u.some, flags = @[ImGuiInputTextFlags.EnterReturnsTrue])
+    input2* = inputSetting(
+      display = "Custom Input", hint = "Type...",
+      help = "Has a hint, 1 character minimum and 10 characters maximum and only accepts on return",
+      limits = 1..10, flags = @[ImGuiInputTextFlags.EnterReturnsTrue]
+    )
     check* = checkSetting(display = "Checkbox", default = true)
-    combo* = comboSetting[Sizes](display = "Combo box", default = None)
-    radio* = radioSetting[Sizes](display = "Radio button", includeOnly = @[Big, Medium, Small], default = Medium)
+    combo* = comboSetting(display = "Combo box", items = Sizes.toSeq, default = None)
+    radio* = radioSetting(display = "Radio button", items = @[Big, Medium, Small], default = Medium)
     os* = sectionSetting(display = "File dialogs", content = initOs())
     numbers* = sectionSetting(display = "Spinners and sliders", content = initNumbers())
     colors* = sectionSetting(display = "Color pickers", content = initColors())
@@ -214,6 +264,19 @@ type
     winsize* = (w: 600i32, h: 650i32)
     settings* = initSettings()
 
+  MessageKind* = enum
+    mkButton, mkString, mkStrings, mkTerminate
+
+  Message* = object
+    case kind*: MessageKind
+    of mkButton:
+      buttonV*: Button
+    of mkString:
+      stringV*: string
+    of mkStrings:
+      stringsV*: seq[string]
+    else: discard
+
   App* = object
     win*: GLFWWindow
     config*: Config
@@ -222,8 +285,23 @@ type
     resources*: Table[string, string]
 
     maxLabelWidth*: float32 # For the settings modal
+    # For tinyfiledialogs
+    dialogThread*: Thread[ptr Channel[Message]]
+    dialogChannel*: ptr Channel[Message]
 
   ImageData* = tuple[image: seq[byte], width, height: int]
+
+proc messageTerminate*(): Message =
+  Message(kind: mkTerminate)
+
+proc messageString*(s: string): Message =
+  Message(kind: mkString, stringV: s)
+
+proc messageStrings*(s: seq[string]): Message =
+  Message(kind: mkStrings, stringsV: s)
+
+proc messageButton*(b: Button): Message =
+  Message(kind: mkButton, buttonV: b)
 
 # proc renameHook*(_: typedesc[Setting], fieldName: var string) =
 #   fieldName =
