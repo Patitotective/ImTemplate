@@ -1,4 +1,4 @@
-import std/[typetraits, strutils, options, tables, macros, os]
+import std/[threadpool, typetraits, strutils, options, tables, macros, os]
 import micros
 import kdl/prefs
 import tinydialogs
@@ -15,6 +15,9 @@ proc drawSettings(settings: var object, maxLabelWidth: float32) =
     let id = cstring "##" & name
     if setting.kind != stSection:
       igText(label); igSameLine(0, 0)
+      if igIsItemHovered() and setting.help.len > 0:
+        igSetToolTip(cstring setting.help)
+
       igDummy(igVec2(maxLabelWidth - igCalcTextSize(label).x, 0))
       igSameLine(0, 0)
 
@@ -77,7 +80,6 @@ proc drawSettings(settings: var object, maxLabelWidth: float32) =
             setting.comboCache = item
         igEndCombo()
     of stRadio:
-      echo name, " ", setting.radioItems
       for e, item in setting.radioItems:
         if igRadioButton(cstring $item & "##" & name, item == setting.radioCache):
           setting.radioCache = item
@@ -89,12 +91,16 @@ proc drawSettings(settings: var object, maxLabelWidth: float32) =
     of stRGBA:
       igColorEdit4(id, setting.rgbaCache, makeFlags(setting.rgbaFlags))
     of stFile:
+      let fileCache =
+        if setting.fileCache.isNil or not setting.fileCache.isReady:
+          ""
+        else:
+          ^setting.fileCache
       igPushID(id)
-      igInputTextWithHint("##input", "No file selected", cstring setting.fileCache, uint setting.fileCache.len, flags = ImGuiInputTextFlags.ReadOnly)
+      igInputTextWithHint("##input", "No file selected", cstring fileCache, uint fileCache.len, flags = ImGuiInputTextFlags.ReadOnly)
       igSameLine()
       if (igIsItemHovered(flags = AllowWhenDisabled) and igIsMouseDoubleClicked(ImGuiMouseButton.Left)) or igButton("Browse " & FA_FolderOpen):
-        if (let path = openFileDialog("Choose File", getCurrentDir() / "\0", setting.fileFilterPatterns, setting.fileSingleFilterDescription); path.len > 0):
-          setting.fileCache = path
+        setting.fileCache = spawn openFileDialog("Choose File", getCurrentDir() / "\0", setting.fileFilterPatterns, setting.fileSingleFilterDescription)
       igPopID()
     of stFiles:
       let files = setting.filesCache.join(",")

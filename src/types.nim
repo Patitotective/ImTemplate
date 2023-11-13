@@ -27,9 +27,7 @@ type
 
   Empty* = object # https://forum.nim-lang.org/t/10565
 
-  # Because branches cannot have shared and additional fields right now (https://github.com/nim-lang/RFCs/issues/368)
-  # There are some weird field names in the object below
-  # S is the object for a section
+  # T is the object for a section and the enum for a radio or combo
   Setting*[T: object or enum] = object
     display*: string
     help*: string
@@ -71,15 +69,18 @@ type
       fspinFlags*: seq[ImGuiInputTextFlags]
       fstep*, fstepFast*: float32
     of stFile:
-      fileVal*, fileDefault*, fileCache*: string
+      fileCache*: string#FlowVar[string]
+      fileVal*, fileDefault*: string
       fileFilterPatterns*: seq[string]
       fileSingleFilterDescription*: string
     of stFiles:
-      filesVal*, filesDefault*, filesCache*: seq[string]
+      filesCache*: seq[string]#FlowVar[seq[string]]
+      filesVal*, filesDefault*: seq[string]
       filesFilterPatterns*: seq[string]
       filesSingleFilterDescription*: string
     of stFolder:
-      folderVal*, folderDefault*, folderCache*: string
+      folderCache*: string#FlowVar[string]
+      folderVal*, folderDefault*: string
     of stCheck:
       checkVal*, checkDefault*, checkCache*: bool
     of stRGB:
@@ -88,6 +89,31 @@ type
     of stRGBA:
       rgbaVal*, rgbaDefault*, rgbaCache*: RGBA
       rgbaFlags*: seq[ImGuiColorEditFlags]
+
+
+proc decodeHook*(a: KdlNode, v: var Setting[auto]) =
+  echo a
+
+proc encodeHook*(a: Setting[auto], v: var KdlVal) =
+  v = initKVal(1)
+  # v = encode(
+  #   case a.kind
+  #   of stInput: a.inputVal
+  #   of stCombo: a.comboVal
+  #   of stCheck: a.checkVal
+  #   of stSlider: a.sliderVal
+  #   of stFSlider: a.fsliderVal
+  #   of stSpin: a.spinVal
+  #   of stFSpin: a.fspinVal
+  #   of stRadio: a.radioVal
+  #   of stSection: discard
+  #   of stRGB: a.rgbVal
+  #   of stRGBA: a.rgbaVal
+  #   of stFile: a.fileVal
+  #   of stFiles: a.filesVal
+  #   of stFolder: a.folderVal
+  #   , "-"
+  # )
 
 # Taken from https://forum.nim-lang.org/t/6781#42294
 proc ifNeqRetFalse(fld,w,v:NimNode):NimNode =
@@ -226,6 +252,8 @@ type
 proc font*(path: string, size: float32, glyphRanges = GlyphRanges.Default): Font =
   Font(path: path, size: size, glyphRanges: glyphRanges)
 
+echo initSettings().encode()
+
 type
   Config* {.defaults: {defExported}.} = object
     name* = "ImExample"
@@ -264,19 +292,6 @@ type
     winsize* = (w: 600i32, h: 650i32)
     settings* = initSettings()
 
-  MessageKind* = enum
-    mkButton, mkString, mkStrings, mkTerminate
-
-  Message* = object
-    case kind*: MessageKind
-    of mkButton:
-      buttonV*: Button
-    of mkString:
-      stringV*: string
-    of mkStrings:
-      stringsV*: seq[string]
-    else: discard
-
   App* = object
     win*: GLFWWindow
     config*: Config
@@ -285,23 +300,9 @@ type
     resources*: Table[string, string]
 
     maxLabelWidth*: float32 # For the settings modal
-    # For tinyfiledialogs
-    dialogThread*: Thread[ptr Channel[Message]]
-    dialogChannel*: ptr Channel[Message]
+    messageBoxResult*: FlowVar[Button]
 
   ImageData* = tuple[image: seq[byte], width, height: int]
-
-proc messageTerminate*(): Message =
-  Message(kind: mkTerminate)
-
-proc messageString*(s: string): Message =
-  Message(kind: mkString, stringV: s)
-
-proc messageStrings*(s: seq[string]): Message =
-  Message(kind: mkStrings, stringsV: s)
-
-proc messageButton*(b: Button): Message =
-  Message(kind: mkButton, buttonV: b)
 
 # proc renameHook*(_: typedesc[Setting], fieldName: var string) =
 #   fieldName =

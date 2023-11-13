@@ -1,4 +1,4 @@
-import std/[threadpool, strutils, options, sugar, os]
+import std/[threadpool, strutils, options, os]
 
 import imstyle
 import openurl
@@ -12,8 +12,7 @@ when defined(release):
   import resources
 
 # TODO be able to reset single preferences to their default value
-# TODO use app.config.name in thread workers
-# TODO receive thread channel messages
+# TODO save only the settings values in prefs file
 
 proc getConfigDir(app: App): string =
   getConfigDir() / app.config.name
@@ -72,12 +71,16 @@ proc drawDialogModal(app: App) =
   igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))
 
   if igBeginPopupModal(cstring "External Dialog###dialog", flags = makeFlags(ImGuiWindowFlags.NoResize)):
-    igText("An external dialog is open, close it first to continue using the app.")
+    igText("An external dialog is open, \nclose it to continue using the app.")
+
+    # If all spawned threads are finished we can close this popup
+    if app.checkFlowVarsReady(messageBoxResult):
+      igCloseCurrentPopup()
 
     igEndPopup()
 
 proc drawMainMenuBar(app: var App) =
-  var openAbout, openPrefs = false
+  var openAbout, openPrefs, openDialog = false
 
   if igBeginMainMenuBar():
     if igBeginMenu("File"):
@@ -88,8 +91,10 @@ proc drawMainMenuBar(app: var App) =
 
     if igBeginMenu("Edit"):
       if igMenuItem("Hello"):
-        let openDialog = (channel: ptr Channel[Message]) {.thread.} => channel[].send messageButton messageBox("", "Hello, earthling", DialogType.Ok, IconType.Info, Button.Yes)
-        app.dialogThread.createThread(openDialog, app.dialogChannel)
+        # If a messageBox hasn't been called or if a called messageBox has already been closed
+        if app.messageBoxResult.isNil or app.messageBoxResult.isReady():
+          app.messageBoxResult = spawn messageBox(app.config.name, "Hello, earthling. Wanna come with us?", DialogType.YesNo, IconType.Question, Button.Yes)
+          openDialog = true
 
       igEndMenu()
 
@@ -110,11 +115,29 @@ proc drawMainMenuBar(app: var App) =
     igOpenPopup("Settings")
   if openAbout:
     igOpenPopup("###about")
+  if openDialog:
+    igOpenPopup("###dialog")
+    igOpenPopup("###dialog")
+type
+  SettingType* = enum
+    stInput # Input text
+    stCheck # Checkbox
+    stSlider # Int slider
+    stFSlider # Float slider
+    stSpin # Int spin
+    stFSpin # Float spin
+    stCombo
+    stRadio # Radio button
+    stRGB # Color edit RGB
+    stRGBA # Color edit RGBA
+    stSection
+    stFile # File picker
+    stFiles # Multiple files picker
+    stFolder # Folder picker
 
   # These modals will only get drawn when igOpenPopup(name) are called, respectly
   app.drawAboutModal()
   app.drawSettingsmodal()
-
 
 proc drawMain(app: var App) = # Draw the main window
   let viewport = igGetMainViewport()
@@ -128,19 +151,22 @@ proc drawMain(app: var App) = # Draw the main window
     igText(FA_Info & " Application average %.3f ms/frame (%.1f FPS)", 1000f / igGetIO().framerate, igGetIO().framerate)
 
     if igButton("Click me"):
-      let openDialog = (_: ptr Channel[Message]) {.thread.} => notifyPopup("", "Do not do that again", IconType.Warning)
-      app.dialogThread.createThread(openDialog, nil)
+      spawn notifyPopup(app.config.name, "Do not do that again", IconType.Warning)
 
     app.fonts[1].igPushFont()
     igText("Unicode fonts (NotoSansJP-Regular.otf)")
     igText("日本語の言葉 " & FA_SmileO)
     igPopFont()
 
+    if not app.messageBoxResult.isNil and app.messageBoxResult.isReady:
+      if ^app.messageBoxResult == Button.Yes:
+        igText("Glad you said yes!")
+      else:
+        igText("Prepare yourself for the consequences...")
+
   igEnd()
 
-  if app.dialogThread.running():
-    if (let (has, msg) = app.dialogChannel[].tryRecv; has):
-      echo msg
+  app.drawDialogModal()
 
 proc render(app: var App) = # Called in the main loop
   # Poll and handle events (inputs, window resize, etc.)
@@ -227,12 +253,6 @@ proc initApp(): App =
     default = initPrefs()
   )
 
-  result.dialogChannel = cast[ptr Channel[Message]](
-    allocShared0(sizeof(Channel[Message]))
-  )
-
-  result.dialogChannel[].open()
-
 template initFonts(app: var App) =
   # Merge ForkAwesome icon font
   let config = utils.newImFontConfig(mergeMode = true)
@@ -267,9 +287,6 @@ proc terminate(app: var App) =
   app.prefs[maximized] = app.win.getWindowAttrib(GLFWMaximized) == GLFW_TRUE
 
   app.prefs.save()
-
-  app.dialogChannel[].close()
-  deallocShared(app.dialogChannel)
 
 proc main() =
   var app = initApp()

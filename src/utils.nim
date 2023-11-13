@@ -1,4 +1,4 @@
-import std/[typetraits, strutils, tables, os]
+import std/[typetraits, strutils, tables, macros, os]
 import kdl, kdl/prefs
 import stb_image/read as stbi
 import nimgl/[imgui, glfw, opengl]
@@ -203,15 +203,15 @@ proc loadTextureFromData*(data: var ImageData, outTexture: var GLuint) =
 
     glTexImage2D(GL_TEXTURE_2D, GLint 0, GL_RGBA.GLint, GLsizei data.width, GLsizei data.height, GLint 0, GL_RGBA, GL_UNSIGNED_BYTE, data.image[0].addr)
 
-# template settingBefore() =
-#   igText(id); igSameLine(0, 0)
-#   igDummy(igVec2(maxLabelWidth - igCalcTextSize(id).x, 0))
-#   igSameLine(0, 0)
+macro checkFlowVarsReady*(app: App, fields: varargs[untyped]): bool =
+  # This macro just converts app.checkFlowVarsReady(field1, field2) to
+  # (app.field1.isNil or app.field1.isReady) and (app.field2.isNil or app.field2.isReady)
+  for field in fields:
+    let cond = quote do:
+      (`app`.`field`.isNil or `app`.`field`.isReady)
 
-# proc inputText(id: string, value: var string, flags = 0.ImGuiInputTextFlags) =
-#   let maxbuf = buffer.len + 1
-#   let buffer = newString(maxbuf, value)
-
-#   if igInputText(cstring id, cstring buffer, flags):
-#     value = buffer.cleanString()
+    if result.kind == nnkEmpty:
+      result = cond
+    else:
+      result = infix(result, "and", cond)
 
