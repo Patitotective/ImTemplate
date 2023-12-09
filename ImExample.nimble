@@ -8,13 +8,13 @@ backend          = "cpp"
 # Dependencies
 
 requires "nim >= 1.6.2"
-requires "kdl >= 1.2.4"
+requires "kdl >= 2.0.0"
 requires "nimgl >= 1.3.2"
 requires "stb_image >= 2.5"
-requires "imstyle >= 1.0.0"
-requires "openurl >= 2.0.3"
+requires "imstyle >= 3.0.0"
+requires "openurl >= 2.0.4"
 requires "tinydialogs >= 1.0.0"
-requires "constructor >= 1.1.4"
+requires "constructor >= 1.2.0"
 
 import std/[strformat, options]
 import src/types
@@ -32,7 +32,7 @@ let args = &"--app:gui --out:{outPath} --cpu:{arch} -d:configPath={configPath} {
 
 task buildr, "Build the application for release":
   exec "nimble install -d -y"
-  exec &"nim cpp -d:release {args} main.nim"
+  exec &"nim c -d:release {args} main.nim"
 
 const desktop = """
 [Desktop Entry]
@@ -54,7 +54,7 @@ task buildapp, "Build the AppImage":
   # Compile applicaiton executable
   if not existsDir("AppDir"): mkDir("AppDir")
   exec "nimble install -d -y"
-  exec &"nim cpp -d:release -d:appimage {args} --out:AppDir/AppRun main.nim"
+  exec &"nim c -d:release -d:appimage {args} --out:AppDir/AppRun main.nim"
 
   # Make desktop file
   writeFile(

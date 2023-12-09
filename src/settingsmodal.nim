@@ -6,19 +6,24 @@ import nimgl/imgui
 
 import utils, icons, types
 
-proc settingLabel(name: string, setting: Setting[auto]): cstring =
-  cstring (if setting.display.len == 0: name else: setting.display) & ": "
+proc settingLabel(name: string, setting: Setting[auto]): string =
+  (if setting.display.len == 0: name else: setting.display) & ": "
 
-proc drawSettings(settings: var object, maxLabelWidth: float32) =
+proc drawSettings(settings: var object, maxLabelWidth: float32): bool =
+  ## Returns wheter or not to open the block dialog (because a file dailog or so was open)
+
   for name, setting in settings.fieldPairs:
     let label = settingLabel(name, setting)
     let id = cstring "##" & name
     if setting.kind != stSection:
-      igText(label); igSameLine(0, 0)
-      if igIsItemHovered() and setting.help.len > 0:
-        igSetToolTip(cstring setting.help)
+      igText(cstring label); igSameLine(0, 0)
+      if igIsItemHovered():
+        if igIsMouseReleased(ImGuiMouseButton.Right):
+          igOpenPopup(cstring label)
+        elif setting.help.len > 0:
+          igSetToolTip(cstring setting.help)
 
-      igDummy(igVec2(maxLabelWidth - igCalcTextSize(label).x, 0))
+      igDummy(igVec2(maxLabelWidth - igCalcTextSize(cstring label).x, 0))
       igSameLine(0, 0)
 
     case setting.kind
@@ -91,44 +96,60 @@ proc drawSettings(settings: var object, maxLabelWidth: float32) =
     of stRGBA:
       igColorEdit4(id, setting.rgbaCache, makeFlags(setting.rgbaFlags))
     of stFile:
-      let fileCache =
-        if setting.fileCache.isNil or not setting.fileCache.isReady:
-          ""
-        else:
-          ^setting.fileCache
+      if not setting.fileCache.flowvar.isNil and setting.fileCache.flowvar.isReady and (let val = ^setting.fileCache.flowvar; val.len > 0):
+        setting.fileCache = (val: val, flowvar: nil) # Here we set flowvar to nil because once we acquire it's value it's not neccessary until it's spawned again
+
       igPushID(id)
-      igInputTextWithHint("##input", "No file selected", cstring fileCache, uint fileCache.len, flags = ImGuiInputTextFlags.ReadOnly)
+      igInputTextWithHint("##input", "No file selected", cstring setting.fileCache.val, uint setting.fileCache.val.len, flags = ImGuiInputTextFlags.ReadOnly)
       igSameLine()
-      if (igIsItemHovered(flags = AllowWhenDisabled) and igIsMouseDoubleClicked(ImGuiMouseButton.Left)) or igButton("Browse " & FA_FolderOpen):
-        setting.fileCache = spawn openFileDialog("Choose File", getCurrentDir() / "\0", setting.fileFilterPatterns, setting.fileSingleFilterDescription)
+      if igButton("Browse " & FA_FolderOpen):
+        setting.fileCache.flowvar = spawn openFileDialog("Choose File", getCurrentDir() / "\0", setting.fileFilterPatterns, setting.fileSingleFilterDescription)
+        result = true
       igPopID()
     of stFiles:
-      let files = setting.filesCache.join(",")
+      if not setting.filesCache.flowvar.isNil and setting.filesCache.flowvar.isReady and (let val = ^setting.filesCache.flowvar; val.len > 0):
+        setting.filesCache = (val: val, flowvar: nil) # Here we set flowvar to nil because once we acquire it's value it's not neccessary until it's spawned again
+
+      let files = setting.filesCache.val.join(";")
       igPushID(id)
       igInputTextWithHint("##input", "No files selected", cstring files, uint files.len, flags = ImGuiInputTextFlags.ReadOnly)
       igSameLine()
-      if (igIsItemHovered(flags = AllowWhenDisabled) and igIsMouseDoubleClicked(ImGuiMouseButton.Left)) or igButton("Browse " & FA_FolderOpen):
-        if (let paths = openMultipleFilesDialog("Choose Files", getCurrentDir() / "\0", setting.filesFilterPatterns, setting.filesSingleFilterDescription); paths.len > 0):
-          setting.filesCache = paths
+      if igButton("Browse " & FA_FolderOpen):
+        setting.filesCache.flowvar = spawn openMultipleFilesDialog("Choose Files", getCurrentDir() / "\0", setting.filesFilterPatterns, setting.filesSingleFilterDescription)
+        result = true
       igPopID()
     of stFolder:
+      if not setting.folderCache.flowvar.isNil and setting.folderCache.flowvar.isReady and (let val = ^setting.folderCache.flowvar; val.len > 0):
+        setting.folderCache = (val: val, flowvar: nil) # Here we set flowvar to nil because once we acquire it's value it's not neccessary until it's spawned again
+
       igPushID(id)
-      igInputTextWithHint("##input", "No folder selected", cstring setting.folderCache, uint setting.folderCache.len, flags = ImGuiInputTextFlags.ReadOnly)
+      igInputTextWithHint("##input", "No folder selected", cstring setting.folderCache.val, uint setting.folderCache.val.len, flags = ImGuiInputTextFlags.ReadOnly)
       igSameLine()
-      if (igIsItemHovered(flags = AllowWhenDisabled) and igIsMouseDoubleClicked(ImGuiMouseButton.Left)) or igButton("Browse " & FA_FolderOpen):
-        if (let path = selectFolderDialog("Choose Folder", getCurrentDir() / "\0"); path.len > 0):
-          setting.folderCache = path
+      if igButton("Browse " & FA_FolderOpen):
+        setting.folderCache.flowvar = spawn selectFolderDialog("Choose Folder", getCurrentDir() / "\0")
+        result = true
       igPopID()
     of stSection:
-      igPushID(id)
-      if igCollapsingHeader(label, makeFlags(setting.sectionFlags)):
-        igIndent()
-        when setting.content is object:
-          drawSettings(setting.content, maxLabelWidth)
-        igUnindent()
-      igPopID()
+      if igCollapsingHeader(cstring label, makeFlags(setting.sectionFlags)):
+        if igIsItemHovered():
+          if igIsMouseReleased(ImGuiMouseButton.Right):
+            igOpenPopup(cstring label)
 
-    if setting.help.len > 0:
+        igPushID(id); igIndent()
+        when setting.content is object:
+          result = drawSettings(setting.content, maxLabelWidth)
+        igUnindent(); igPopID()
+      else: # When the header is closed
+        if igIsItemHovered():
+          if igIsMouseReleased(ImGuiMouseButton.Right):
+            igOpenPopup(cstring label)
+
+    if igBeginPopup(cstring label):
+      if igSelectable(cstring("Reset " & label[0..^3] #[remove the ": "]# & " to default")):
+        setting.cacheToDefault()
+      igEndPopup()
+
+    if setting.help.len > 0 and setting.kind != stSection:
       igSameLine()
       igHelpMarker(setting.help)
 
@@ -144,7 +165,7 @@ proc calcMaxLabelWidth(settings: object): float32 =
               calcMaxLabelWidth(setting.content)
             else: 0f
           else:
-            igCalcTextSize(label).x
+            igCalcTextSize(cstring label).x
         if width > result:
           result = width
       else:
@@ -159,21 +180,21 @@ proc drawSettingsmodal*(app: var App) =
   if igBeginPopupModal("Settings", flags = makeFlags(AlwaysAutoResize, HorizontalScrollbar)):
     var close = false
 
-    # app.settingsmodal.cache must be set to app.prefs[settings] once when opening the modal
-    drawSettings(app.prefs[settings], app.maxLabelWidth)
+    if drawSettings(app.prefs[settings], app.maxLabelWidth):
+      igOpenPopup("###blockdialog")
+
+    app.drawBlockDialogModal()
 
     igSpacing()
 
     if igButton("Save"):
-      echo "TODO: save"
-      # app.prefs[settings] = app.settingsmodal.cache
+      app.prefs[settings].save()
       igCloseCurrentPopup()
 
     igSameLine()
 
     if igButton("Cancel"):
-      echo "TODO: cache"
-      # app.settingsmodal.cache = app.prefs[settings]
+      initCache(app.prefs[settings])
       igCloseCurrentPopup()
 
     igSameLine()

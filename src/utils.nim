@@ -1,7 +1,8 @@
-import std/[typetraits, strutils, tables, macros, os]
+import std/[typetraits, threadpool, strutils, tables, macros, os]
 import kdl, kdl/prefs
 import stb_image/read as stbi
 import nimgl/[imgui, glfw, opengl]
+import tinydialogs
 
 import types
 
@@ -214,4 +215,176 @@ macro checkFlowVarsReady*(app: App, fields: varargs[untyped]): bool =
       result = cond
     else:
       result = infix(result, "and", cond)
+
+proc checkSettingsFlowVarsReadyImpl(obj: object): bool =
+  # This macro just converts app.checkFlowVarsReady(field1, field2) to
+  # (app.field1.isNil or app.field1.isReady) and (app.field2.isNil or app.field2.isReady)
+  result = true
+  for fieldName, field in obj.fieldPairs:
+    case field.kind
+    of stFile:
+      if not field.fileCache.flowvar.isNil and not field.fileCache.flowvar.isReady:
+        return false
+    of stFiles:
+      if not field.filesCache.flowvar.isNil and not field.filesCache.flowvar.isReady:
+        return false
+    of stFolder:
+      if not field.folderCache.flowvar.isNil and not field.folderCache.flowvar.isReady:
+        return false
+    of stSection:
+      when field.content is object:
+        if not checkSettingsFlowVarsReadyImpl(field.content):
+          return false
+      else:
+        raise newException(ValueError, $fieldName & " must be an object, got " & $typeof(field.content))
+    else: discard
+
+proc checkFlowVarsReady*(s: Settings): bool =
+  # Converts app.checkFlowVarsReady(field1, field2) to
+  # (app.field1.isNil or app.field1.isReady) and (app.field2.isNil or app.field2.isReady)
+  checkSettingsFlowVarsReadyImpl(s)
+
+proc initCacheSettingsObj(a: var object)
+proc saveSettingsObj(a: var object)
+
+proc valToCache*(s: var Setting) =
+  case s.kind
+  of stInput:
+    s.inputCache = s.inputVal
+  of stCombo:
+    s.comboCache = s.comboVal
+  of stCheck:
+    s.checkCache = s.checkVal
+  of stSlider:
+    s.sliderCache = s.sliderVal
+  of stFSlider:
+    s.fsliderCache = s.fsliderVal
+  of stSpin:
+    s.spinCache = s.spinVal
+  of stFSpin:
+    s.fspinCache = s.fspinVal
+  of stRadio:
+    s.radioCache = s.radioVal
+  of stSection:
+    when s.content is object:
+      initCacheSettingsObj(s.content)
+    else:
+      raise newException(ValueError, $s & " must be an object, got " & $typeof(s.content))
+  of stRGB:
+    s.rgbCache = s.rgbVal
+  of stRGBA:
+    s.rgbaCache = s.rgbaVal
+  of stFile:
+    s.fileCache.val = s.fileVal
+  of stFiles:
+    s.filesCache.val = s.filesVal
+  of stFolder:
+    s.folderCache.val = s.folderVal
+
+proc cacheToVal*(s: var Setting) =
+  case s.kind
+  of stInput:
+    s.inputVal = s.inputCache
+  of stCombo:
+    s.comboVal = s.comboCache
+  of stCheck:
+    s.checkVal = s.checkCache
+  of stSlider:
+    s.sliderVal = s.sliderCache
+  of stFSlider:
+    s.fsliderVal = s.fsliderCache
+  of stSpin:
+    s.spinVal = s.spinCache
+  of stFSpin:
+    s.fspinVal = s.fspinCache
+  of stRadio:
+    s.radioVal = s.radioCache
+  of stSection:
+    when s.content is object:
+      saveSettingsObj(s.content)
+    else:
+      raise newException(ValueError, $s & " must be an object, got " & $typeof(s.content))
+  of stRGB:
+    s.rgbVal = s.rgbCache
+  of stRGBA:
+    s.rgbaVal = s.rgbaCache
+  of stFile:
+    s.fileVal = s.fileCache.val
+  of stFiles:
+    s.filesVal = s.filesCache.val
+  of stFolder:
+    s.folderVal = s.folderCache.val
+
+proc cacheToDefault*(s: var Setting) =
+  case s.kind
+  of stInput:
+    s.inputCache = s.inputDefault
+  of stCombo:
+    s.comboCache = s.comboDefault
+  of stCheck:
+    s.checkCache = s.checkDefault
+  of stSlider:
+    s.sliderCache = s.sliderDefault
+  of stFSlider:
+    s.fsliderCache = s.fsliderDefault
+  of stSpin:
+    s.spinCache = s.spinDefault
+  of stFSpin:
+    s.fspinCache = s.fspinDefault
+  of stRadio:
+    s.radioCache = s.radioDefault
+  of stSection:
+    when s.content is object:
+      initCacheSettingsObj(s.content)
+    else:
+      raise newException(ValueError, $s & " must be an object, got " & $typeof(s.content))
+  of stRGB:
+    s.rgbCache = s.rgbDefault
+  of stRGBA:
+    s.rgbaCache = s.rgbaDefault
+  of stFile:
+    s.fileCache.val = s.fileDefault
+  of stFiles:
+    s.filesCache.val = s.filesDefault
+  of stFolder:
+    s.folderCache.val = s.folderDefault
+
+proc saveSettingsObj(a: var object) =
+  for field in a.fields:
+    field.cacheToVal()
+
+proc initCacheSettingsObj(a: var object) =
+  for field in a.fields:
+    field.valToCache()
+
+proc initCache*(a: var Settings) =
+  ## Sets all a's cache values to the current values (`inputCache = inputVal`)
+  initCacheSettingsObj(a)
+
+proc save*(a: var Settings) =
+  ## Sets all a's current values to the cache values (`inputVal = inputCache`)
+  saveSettingsObj(a)
+
+proc areThreadsFinished*(app: App): bool =
+  app.checkFlowVarsReady(messageBoxResult) and app.prefs[settings].checkFlowVarsReady()
+
+proc drawBlockDialogModal*(app: App) =
+  ## This modal is meant to block the app until all the FlowVar(s) are nil or ready
+  var center: ImVec2
+  getCenterNonUDT(center.addr, igGetMainViewport())
+  igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))
+
+  if igBeginPopupModal(cstring "External Dialog###blockdialog", flags = makeFlags(ImGuiWindowFlags.NoResize)):
+    igText("An external dialog is open, \nclose it to continue using the app.")
+
+    # If all spawned threads are finished we can close this popup
+    if app.areThreadsFinished():
+      igCloseCurrentPopup()
+    else: # Do not allow the window to be closed unless the threads are finished
+      if app.win.windowShouldClose():
+        app.win.setWindowShouldClose(false)
+        spawn notifyPopup(app.config.name, "Close the external dialogs before closing the app", IconType.Error)
+
+    igEndPopup()
+
 

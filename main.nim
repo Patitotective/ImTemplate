@@ -1,4 +1,4 @@
-import std/[threadpool, strutils, options, os]
+import std/[threadpool, strutils, strformat, os]
 
 import imstyle
 import openurl
@@ -11,17 +11,11 @@ import src/[settingsmodal, utils, types, icons]
 when defined(release):
   import resources
 
-# TODO be able to reset single preferences to their default value
-# TODO save only the settings values in prefs file
-
 proc getConfigDir(app: App): string =
   getConfigDir() / app.config.name
 
 proc drawAboutModal(app: App) =
-  var center: ImVec2
-  getCenterNonUDT(center.addr, igGetMainViewport())
-  igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))
-
+  igSetNextWindowPos(igGetMainViewport().getCenter(), Always, igVec2(0.5f, 0.5f))
   let unusedOpen = true # Passing this parameter creates a close button
   if igBeginPopupModal(cstring "About " & app.config.name & "###about", unusedOpen.unsafeAddr, flags = makeFlags(ImGuiWindowFlags.NoResize)):
     # Display icon image
@@ -65,22 +59,8 @@ proc drawAboutModal(app: App) =
 
     igEndPopup()
 
-proc drawDialogModal(app: App) =
-  var center: ImVec2
-  getCenterNonUDT(center.addr, igGetMainViewport())
-  igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))
-
-  if igBeginPopupModal(cstring "External Dialog###dialog", flags = makeFlags(ImGuiWindowFlags.NoResize)):
-    igText("An external dialog is open, \nclose it to continue using the app.")
-
-    # If all spawned threads are finished we can close this popup
-    if app.checkFlowVarsReady(messageBoxResult):
-      igCloseCurrentPopup()
-
-    igEndPopup()
-
 proc drawMainMenuBar(app: var App) =
-  var openAbout, openPrefs, openDialog = false
+  var openAbout, openPrefs, openBlockdialog = false
 
   if igBeginMainMenuBar():
     if igBeginMenu("File"):
@@ -94,7 +74,7 @@ proc drawMainMenuBar(app: var App) =
         # If a messageBox hasn't been called or if a called messageBox has already been closed
         if app.messageBoxResult.isNil or app.messageBoxResult.isReady():
           app.messageBoxResult = spawn messageBox(app.config.name, "Hello, earthling. Wanna come with us?", DialogType.YesNo, IconType.Question, Button.Yes)
-          openDialog = true
+          openBlockdialog = true
 
       igEndMenu()
 
@@ -110,34 +90,17 @@ proc drawMainMenuBar(app: var App) =
 
   # See https://github.com/ocornut/imgui/issues/331#issuecomment-751372071
   if openPrefs:
-    echo "TODO"
-    # app.settingsmodal.cache = app.prefs[settings]
+    initCache(app.prefs[settings])
     igOpenPopup("Settings")
   if openAbout:
     igOpenPopup("###about")
-  if openDialog:
-    igOpenPopup("###dialog")
-    igOpenPopup("###dialog")
-type
-  SettingType* = enum
-    stInput # Input text
-    stCheck # Checkbox
-    stSlider # Int slider
-    stFSlider # Float slider
-    stSpin # Int spin
-    stFSpin # Float spin
-    stCombo
-    stRadio # Radio button
-    stRGB # Color edit RGB
-    stRGBA # Color edit RGBA
-    stSection
-    stFile # File picker
-    stFiles # Multiple files picker
-    stFolder # Folder picker
+  if openBlockdialog:
+    igOpenPopup("###blockdialog")
 
   # These modals will only get drawn when igOpenPopup(name) are called, respectly
   app.drawAboutModal()
   app.drawSettingsmodal()
+  # app.drawBlockDialogModal()
 
 proc drawMain(app: var App) = # Draw the main window
   let viewport = igGetMainViewport()
@@ -165,8 +128,6 @@ proc drawMain(app: var App) = # Draw the main window
         igText("Prepare yourself for the consequences...")
 
   igEnd()
-
-  app.drawDialogModal()
 
 proc render(app: var App) = # Called in the main loop
   # Poll and handle events (inputs, window resize, etc.)
@@ -248,10 +209,23 @@ proc initApp(): App =
     when defined(release): "prefs"
     else: "prefs_dev"
 
-  result.prefs = initKPrefs(
-    path = (result.getConfigDir() / filename).changeFileExt("kdl"),
-    default = initPrefs()
-  )
+  let path = (result.getConfigDir() / filename).changeFileExt("kdl")
+
+  try:
+    result.prefs = initKPrefs(
+      path = path,
+      default = initPrefs()
+    )
+  except KdlError:
+    let m = messageBox(result.config.name, &"Corrupt preferences file {path}.\nYou cannot continue using the app until it is fixed.\nYou may fix it manually or do you want to delete it and reset its content? You cannot undo this action", DialogType.OkCancel, IconType.Error, Button.No)
+    if m == Button.Yes:
+      discard tryRemoveFile(path)
+      result.prefs = initKPrefs(
+        path = path,
+        default = initPrefs()
+      )
+    else:
+      raise
 
 template initFonts(app: var App) =
   # Merge ForkAwesome icon font
@@ -277,6 +251,8 @@ template initFonts(app: var App) =
       io.fonts.igAddFontFromMemoryTTF(app.res(app.config.iconFontPath), font.size, config.unsafeAddr, iconFontGlyphRanges[0].unsafeAddr)
 
 proc terminate(app: var App) =
+  sync() # Wait for spawned threads
+
   var x, y, width, height: int32
 
   app.win.getWindowPos(x.addr, y.addr)
@@ -315,6 +291,7 @@ proc main() =
   app.initFonts()
 
   # Main loop
+  # discard app.win.setWindowCloseCallback(closeCallback(, app.config.name))
   while not app.win.windowShouldClose:
     app.render()
 
