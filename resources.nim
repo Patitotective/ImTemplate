@@ -1,6 +1,6 @@
 import std/[sequtils, tables]
 import kdl
-import src/types
+import src/configtype
 
 const config = initConfig()
 

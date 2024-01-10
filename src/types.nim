@@ -6,6 +6,10 @@ import tinydialogs
 import kdl, kdl/[types, utils]
 import constructor/defaults
 
+import configtype
+
+export configtype
+
 type
   SettingType* = enum
     stInput # Input text
@@ -221,17 +225,6 @@ type
     numbers* = sectionSetting(display = "Spinners and sliders", content = initNumbers())
     colors* = sectionSetting(display = "Color pickers", content = initColors())
 
-  GlyphRanges* = enum
-    Default, ChineseFull, ChineseSimplified, Cyrillic, Japanese, Korean, Thai, Vietnamese
-
-  Font* = object
-    path*: string
-    size*: float32
-    glyphRanges*: GlyphRanges
-
-proc font*(path: string, size: float32, glyphRanges = GlyphRanges.Default): Font =
-  Font(path: path, size: size, glyphRanges: glyphRanges)
-
 proc decodeSettingsObj*(a: KdlNode, v: var object) =
   # echo "decoding settings ", a
   for fieldName, field in v.fieldPairs:
@@ -346,45 +339,7 @@ proc encodeSettingsObj(a: object): KdlDoc =
 proc encodeKdl*(a: Settings, v: var KdlNode, name: string) =
   v = initKNode(name, children = encodeSettingsObj(a))
 
-# var s = initSettings()
-# s.input.inputVal = "Bye world >:C"
-# let k = s.encodeKdlNode("settings")
-# let sk = k.decodeKdl(Settings)
-
-# echo sk
-
 type
-  Config* {.defaults: {defExported}.} = object
-    name* = "ImExample"
-    comment* = "ImExample is a simple Dear ImGui application example"
-    version* = "2.0.0"
-    website* = "https://github.com/Patitotective/ImTemplate"
-    authors* = [ # [name, url]
-      ("Patitotective", "https://github.com/Patitotective"),
-      ("Cristobal", "mailto:cristobalriaga@gmail.com"),
-      ("Omar Cornut", "https://github.com/ocornut"),
-      ("Beef, Yard, Rika", ""),
-      ("and the Nim community :]", ""),
-      ("Inu147", ""),
-    ]
-    categories* = "Utility"
-
-    stylePath* = "assets/style.kdl"
-    iconPath* = "assets/icon.png"
-    svgIconPath* = "assets/icon.svg"
-
-    iconFontPath* = "assets/forkawesome-webfont.ttf"
-    fonts* = [
-      font("assets/ProggyVector Regular.ttf", 16f), # Other options are Roboto-Regular.ttf, Cousine-Regular.ttf or Karla-Regular.ttf
-      font("assets/NotoSansJP-Regular.otf", 16f, GlyphRanges.Japanese),
-    ]
-
-    # AppImage
-    ghRepo* = ["Patitotective", "ImTemplate"] # [username, repository]
-
-    # Window
-    minSize* = (w: 200i32, h: 200i32) # < 0: don't care
-
   Prefs* {.defaults: {defExported}.} = object
     maximized* = false
     winpos* = (x: -1i32, y: -1i32) # < 0: center the window
@@ -394,7 +349,7 @@ type
   App* = object
     win*: GLFWWindow
     config*: Config
-    prefs*: KdlPrefs[Prefs] # These are the values that will be saved in the config file
+    prefs*: KdlPrefs[Prefs] # These are the values that will be saved in the prefs file
     fonts*: array[Config.fonts.len, ptr ImFont]
     resources*: Table[string, string]
 
@@ -402,63 +357,4 @@ type
     messageBoxResult*: FlowVar[Button]
 
   ImageData* = tuple[image: seq[byte], width, height: int]
-
-# proc renameHook*(_: typedesc[Setting], fieldName: var string) =
-#   fieldName =
-#     case fieldName
-#     of "type":
-#       "kind"
-#     else:
-#       fieldName
-
-# proc enumHook*(a: string, v: var SettingType) =
-#   try:
-#     v = parseEnum[SettingType]("st" & a)
-#   except ValueError:
-#     raise newException(ValueError, &"invalid enum value {a} for {$typeof(v)}")
-
-# proc decodeHook*(a: KdlNode, v: var Fonts) =
-#   if "iconFontPath" in a.props:
-#     v.iconFontPath = a["iconFontPath"].getString()
-
-#   for child in a.children:
-#     assert child.args.len == 2
-#     v.fonts.add (child.args[0].getString(), child.args[1].get(float32))
-
-# proc decodeHook*(a: KdlNode, v: var (ImVec2 or tuple[x, y: int32])) =
-#   assert a.args.len == 2
-#   when v is ImVec2:
-#     v.x = a.args[0].get(float32)
-#     v.y = a.args[1].get(float32)
-#   else:
-#     v.x = a.args[0].get(int32)
-#     v.y = a.args[1].get(int32)
-
-# proc decodeHook*(a: KdlNode, v: var tuple[name, url: string]) =
-#   assert a.args.len in 1..2
-#   v.name = a.args[0].getString()
-#   if a.args.len > 1:
-#     v.url = a.args[1].getString()
-
-# proc decodeHook*(a: KdlNode, v: var tuple[r, g, b: float32]) =
-#   assert a.args.len == 3
-#   v.r = a.args[0].get(float32)
-#   v.g = a.args[1].get(float32)
-#   v.b = a.args[2].get(float32)
-
-# proc decodeHook*(a: KdlNode, v: var tuple[r, g, b, a: float32]) =
-#   assert a.args.len == 4
-#   v.r = a.args[0].get(float32)
-#   v.g = a.args[1].get(float32)
-#   v.b = a.args[2].get(float32)
-#   v.a = a.args[3].get(float32)
-
-# proc encodeHook*(a: tuple[r, g, b: float32], v: var KdlNode, name: string) =
-#   v = initKNode(name, args = toKdlArgs(a.r, a.g, a.b))
-
-# proc encodeHook*(a: tuple[r, g, b, a: float32], v: var KdlNode, name: string) =
-#   v = initKNode(name, args = toKdlArgs(a.r, a.g, a.b, a.a))
-
-# proc encodeHook*(a: ImVec2 or tuple[x, y: int32], v: var KdlNode, name: string) =
-#   v = initKNode(name, args = toKdlArgs(a.x, a.y))
 
