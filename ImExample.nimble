@@ -31,6 +31,7 @@ let flags = getEnv("FLAGS")
 let args = &"--app:gui --out:{outPath} --cpu:{arch} {flags}"
 
 task buildr, "Build the application for release":
+  exec "nimble install -d -y" # We do this so you can run this task without having any dependencies installed and still work
   exec &"nimble c -d:release {args} main.nim"
 
 const desktopTemplate = """
@@ -52,6 +53,7 @@ task buildapp, "Build the AppImage":
 
   # Compile applicaiton executable
   if not dirExists("AppDir"): mkDir("AppDir")
+  exec "nimble install -d -y" # We do this so you can run this task without having any dependencies installed and still work
   exec &"nimble c -d:release -d:appimage {args} --out:AppDir/AppRun main.nim"
 
   # Make desktop file
