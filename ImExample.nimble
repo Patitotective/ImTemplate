@@ -8,7 +8,7 @@ backend          = "cpp"
 # Dependencies
 
 requires "nim >= 1.6.2"
-requires "kdl >= 2.0.0"
+requires "kdl >= 2.0.1"
 requires "nimgl >= 1.3.2"
 requires "stb_image >= 2.5"
 requires "imstyle >= 3.0.0"
