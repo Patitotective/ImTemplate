@@ -203,7 +203,7 @@ proc initApp(): App =
   when defined(release):
     result.resources = readResources()
 
-  result.config = initConfig()
+  result.config = Config()
 
   let filename =
     when defined(release): "prefs"

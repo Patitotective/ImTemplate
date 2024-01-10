@@ -1,5 +1,4 @@
 import std/options
-import constructor/defaults
 
 type
 
@@ -15,7 +14,7 @@ proc font*(path: string, size: float32, glyphRanges = GlyphRanges.Default): Font
   Font(path: path, size: size, glyphRanges: glyphRanges)
 
 type
-  Config* {.defaults: {defExported}.} = object
+  Config* = object
     name* = "ImExample"
     comment* = "ImExample is a simple Dear ImGui application example"
     version* = "2.0.0"

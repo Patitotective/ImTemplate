@@ -19,7 +19,7 @@ requires "constructor >= 1.2.0"
 import std/[strformat, options]
 import src/configtype
 
-const config = initConfig()
+const config = Config()
 
 version          = config.version
 namedBin["main"] = config.name

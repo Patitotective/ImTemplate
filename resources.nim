@@ -2,7 +2,7 @@ import std/[sequtils, tables]
 import kdl
 import src/configtype
 
-const config = initConfig()
+const config = Config()
 
 const resourcesPaths = @[
   config.stylePath,
