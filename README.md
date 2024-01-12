@@ -166,6 +166,20 @@ type
 
   Sizes* = enum
     None, Huge, Big, Medium, Small, Mini
+
+  Settings* {.defaults: {}.} = object
+    input* = inputSetting(display = "Input", default = "Hello World")
+    input2* = inputSetting(
+      display = "Custom Input", hint = "Type...",
+      help = "Has a hint, 10 characters maximum and only accepts on return",
+      limits = 0..10, flags = @[ImGuiInputTextFlags.EnterReturnsTrue]
+    )
+    check* = checkSetting(display = "Checkbox", default = true)
+    combo* = comboSetting(display = "Combo box", items = Sizes.toSeq, default = None)
+    radio* = radioSetting(display = "Radio button", items = @[Big, Medium, Small], default = Medium)
+    os* = sectionSetting(display = "File dialogs", help = "Single file, multiple files and folder pickers", content = initOs())
+    numbers* = sectionSetting(display = "Spinners and sliders", content = initNumbers())
+    colors* = sectionSetting(display = "Color pickers", content = initColors())
 ```
 
 ## Building
