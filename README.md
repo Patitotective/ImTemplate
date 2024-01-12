@@ -1,18 +1,20 @@
 # <img title="Icon" width=50 height=50 src="https://github.com/Patitotective/ImTemplate/blob/main/assets/icon.png"></img> ImTemplate
-Template for making a single-windowed (or not) Dear ImGui application in Nim.
+Template for making a single-windowed Dear ImGui application in Nim.
 
-![Main Window](https://user-images.githubusercontent.com/79225325/170889620-d1b3ce74-c92d-440c-9144-92b068973651.png)
+![image](https://github.com/Patitotective/ImTemplate/assets/79225325/6acb8632-1505-4cf9-a520-80255a13c499)
 
 (Check [ImDemo](https://github.com/Patitotective/ImDemo) for a **full** example)
 
 ## Features
 - Icon font support.
-- Simple about modal.
-- Preferences system (with preferences modal).
+- About modal.
+- Preferences system.
+- Settings modal.
 - AppImage support (Linux).
 - Updateable AppImage support (with [gh-releases-zsync](https://github.com/AppImage/AppImageSpec/blob/master/draft.md#github-releases)).
-- Simple data resources support.
+- Simple data resources support (embed files into the binary).
 - GitHub workflow for building and uploading the AppImage and `.exe` as assets.
+- Non-blocking (using a [`std/threadpool`](https://nim-lang.org/docs/threadpool.html)) native system dialogs using [`tinydialogs`](https://github.com/Patitotective/tinydialogs).
 
 (To use NimGL in Ubuntu you might need some libraries `sudo apt install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl-dev`)
 
@@ -20,25 +22,27 @@ Template for making a single-windowed (or not) Dear ImGui application in Nim.
 - `README.md`: Project's description.
 - `LICENSE`: Project's license.
 - `main.nim`: Application's logic.
-- `resourcesdata.nim`: To bundle data resources (see [Bundling](#bundling)).
-- `nakefile.md`: [Nakefile](https://github.com/fowlmouth/nake) to build the AppImage (see [Building](#building)).
+- `resources.nim`: To bundle data resources (see [Bundling](#bundling)).
 - `config.nims`: Nim compile configuration.
-- `config.toml`: Application's configuration (see [Config](#config)).
 - `ImExample.nimble`: [Nimble file](https://github.com/nim-lang/nimble#creating-packages).
-- `assets`: 
+- `assets`:
   - `icon.png`, `icon.svg`: App icons.
-  - `style.toml`: Style (using [ImStyle](https://github.com/Patitotective/ImStyle)).
+  - `style.kdl`: Style (using [ImStyle](https://github.com/Patitotective/ImStyle)).
   - `Cousine-Regular.ttf`, `Karla-Regular.ttf`, `Roboto-Regular.ttf`, `ProggyVector Regular.ttf`: Multiple fonts so you can choose the one you like the most.
   - `forkawesome-webfont.ttf`: ForkAwesome icon font (see https://forkaweso.me/).
 - `src`:
+  - `types.nim`: Type definitions used by other modules.
   - `icons.nim`: Helper module with [ForkAwesome](https://forkaweso.me) icons unicode points.
   - `utils.nim`: Useful procedures, general types or anything used by more than one module.
-  - `settingsmodal.nim`: Draw the preferences modal (called in `main.nim`)
+  - `settingsmodal.nim`: Draw the settings modal
 
 ## Icon Font
-ImTemplate uses [ForkAwesome](https://forkaweso.me)'s icon font to be able to display icon in labes, to do it you only need to import [`icons.nim`](https://github.com/Patitotective/ImTemplate/blob/main/src/icons.toml) (where the unicode points for each icon are defined), browse https://forkaweso.me/Fork-Awesome/icons, choose the one you want and, for example, if you want to use [`fa-floppy-o`](https://forkaweso.me/Fork-Awesome/icon/floppy-o/), you will write `FA_FloppyO` in a string:
+ImTemplate uses [ForkAwesome](https://forkaweso.me)'s icon font to be able to display icon in labels, to do it you only need to import [`icons.nim`](https://github.com/Patitotective/ImTemplate/blob/main/src/icons.nim) (where the unicode points for each icon are defined), browse https://forkaweso.me/Fork-Awesome/icons, choose the one you want and, for example, if you want to use [`fa-floppy-o`](https://forkaweso.me/Fork-Awesome/icon/floppy-o/), you will write `FA_FloppyO` in a string:
 ```nim
 ...
+# main.nim
+import src/icons
+
 if igButton("Open Link " & FA_ExternalLink):
   openURL("https://forkaweso.me")
 ```
@@ -47,158 +51,158 @@ if igButton("Open Link " & FA_ExternalLink):
 The code is designed to rely on the `App` type (defined in [`utils.nim`](https://github.com/Patitotective/ImTemplate/blob/main/src/utils.nim)), you may want to store anything that your program needs inside it.
 ```nim
 type
-  App* = ref object
+  App* = object
     win*: GLFWWindow
-    font*: ptr ImFont
-    prefs*: Prefs
-    cache*: TomlValueRef # Settings cache
-    config*: TomlValueRef # Prefs table
+    config*: Config
+    prefs*: KdlPrefs[Prefs]
+    fonts*: array[Config.fonts.len, ptr ImFont]
+    resources*: Table[string, string]
 
+    maxLabelWidth*: float32
+    messageBoxResult*: FlowVar[Button]
     # Add your variables here
     ...
 ```
 - `win`: GLFW window.
-- `font`: Default app font (you may want to add more fonts).
-- `prefs`: App preferences (using [niprefs](https://patitotective.github.io/niprefs/)).
-- `cache`: Preferences modal cache settings (to discard or apply them).
+- `fonts`: An array containing the loaded fonts from `Config.fonts`.
+- `prefs`: See [Prefs](#prefs).
 - `config`: Configuration file (loaded from `config.toml`).
+- `resources`: Data resources where the key is the filename and the value is the binary data.
+- `maxLabelWidth`: This is a value that's used to draw the settingsmodal (see https://github.com/Patitotective/ImTemplate/blob/main/src/settingsmodal.nim)
+- `messageBoxResult`: This variable stores the result to a message box dialog opened by [`tinydialogs`](https://github.com/Patitotective/tinydialogs), it uses the `FlowVar` type since it's the result of a spawned thread.
 
 ## Config
-The application's configuration will store information about the app that you may want to change after compiled and before deployed (like the name or version).   
-It is stored using [niprefs](https://patitotective.github.io/niprefs/) and by default at [`config.toml`](https://github.com/Patitotective/ImTemplate/blob/main/config.toml):
+The configuration stores data like name and version of the application, it is stored in its type definition in `src/configtype.nim` using `constructor/defaults` to define the default values:
 ```nim
-# App
-name = "ImExample"
-comment = "ImExample is a simple Dear ImGui application example"
-version = "0.4.0"
-website = "https://github.com/Patitotective/ImTemplate"
-authors = ["Patitotective <https://github.com/Patitotective>", "Cristobal <mailto:cristobalriaga@gmail.com>", "Omar Cornut <https://github.com/ocornut>", "Beef, Yard, Rika",  "and the Nim community :]", "Inu147"]
-categories = ["Utility"]
+type
+  Config* = object
+    name* = "ImExample"
+    comment* = "ImExample is a simple Dear ImGui application example"
+    version* = "2.0.0"
+    website* = "https://github.com/Patitotective/ImTemplate"
+    authors* = [
+      (name: "Patitotective", url: "https://github.com/Patitotective"),
+      ("Cristobal", "mailto:cristobalriaga@gmail.com"),
+      ("Omar Cornut", "https://github.com/ocornut"),
+      ("Beef, Yard, Rika", ""),
+      ("and the Nim community :]", ""),
+      ("Inu147", ""),
+    ]
+    categories* = "Utility"
 
-# AppImage
-ghRepo = "Patitotective/ImTemplate"
+    stylePath* = "assets/style.kdl"
+    iconPath* = "assets/icon.png"
+    svgIconPath* = "assets/icon.svg"
 
-stylePath = "assets/style.toml"
-iconPath = "assets/icon.png"
-svgIconPath = "assets/icon.svg"
-iconFontPath = "assets/forkawesome-webfont.ttf"
-fontPath = "assets/ProggyVector Regular.ttf" # Other options are Roboto-Regular.ttf, Cousine-Regular.ttf or Karla-Regular.ttf
-fontSize = 16.0
+    iconFontPath* = "assets/forkawesome-webfont.ttf"
+    fonts* = [
+      font("assets/ProggyVector Regular.ttf", 16f), # Other options are Roboto-Regular.ttf, Cousine-Regular.ttf or Karla-Regular.ttf
+      font("assets/NotoSansJP-Regular.otf", 16f, GlyphRanges.Japanese),
+    ]
 
-# Window
-minSize = [200, 200] # Width, height
+    # AppImage
+    ghRepo* = (user: "Patitotective", repo: "ImTemplate").some
+    appstreamPath* = ""
 
-# Settings for the preferences window
-[settings.input]
-type = "input"
-default = "Hello World"
-max = 100
-flags = "None" # See https://nimgl.dev/docs/imgui.html#ImGuiInputTextFlags
-help = "Help message"
-...
+    # Window
+    minSize* = (w: 200i32, h: 200i32) # < 0: don't care
 ```
-
-### About Modal
-Using the information from the config file, ImTemplate creates a simple about modal.
-
-![About Modal](https://user-images.githubusercontent.com/79225325/170889730-8cba620b-3d6d-4574-8228-5c45930821d1.png)
-
-### Keys Explanation
-- `name`: App name.
-- `comment`: App description.
-- `version`: App version.
+### Fields Explanation
+- `name`: App's name.
+- `comment`: App's description.
+- `version`: App's version.
 - `website`: A link where you can find more information about the app.
-- `authors`: A sequence of strings to display in the about modal, a link for the author can be specified inside `<>`, e.i.: `@["Patitotective <https://github.com/Patitotective>", "Cristobal <mailto:cristobalriaga@gmail.com>"]`.
+- `authors`: An array containing information about the authors.
 - `categories`: Sequence of [registered categories](https://specifications.freedesktop.org/menu-spec/latest/apa.html) (for the AppImage).
-
-(AppImage)
-- `ghRepo`: GitHub repo to fetch releases from (including this key will generate an `AppImage.zsync` file, include it in your releases for [updates](https://docs.appimage.org/packaging-guide/optional/updates.html#using-appimagetool), skip it to disable).
-- `appstreamPath`: Path to the [AppStream metadata](https://docs.appimage.org/packaging-guide/optional/appstream.html) (optional).
-
-(Paths)
-- `stylePath`: App style path (using https://github.com/Patitotective/ImStyle).
-- `iconPath`: Icon path.
+- `stylePath`: App's ImStyle path (using https://github.com/Patitotective/ImStyle).
+- `iconPath`: PNG icon path.
 - `svgIconPath`: Scalable icon path
 - `iconFontPath`: [ForkAwesome](https://forkaweso.me)'s font path.
-- `fontPath`: Font path.
-- `fontSize`: Font size.
+- `fonts`: An array of `Font` objects containing the font's path, size and range of glyphs for japanese, korean, chinese, etc.
+- `ghRepo`: GitHub repo to fetch releases from (if it's some it will generate an `AppImage.zsync` file, include it in your releases for [AppImage updates](https://docs.appimage.org/packaging-guide/optional/updates.html#using-appimagetool)).
+- `appstreamPath`: Path to the [AppStream metadata](https://docs.appimage.org/packaging-guide/optional/appstream.html).
+- `minSize`: Window's minimum size, use numbers less than zero to disable a limit.
 
-- `minSize`: Window's minimum size.
-- `settings`: See [`settings`](#settings).
+### About Modal
+Using the information from the config object, ImTemplate creates a simple about modal.
 
-### `settings`
-Define the preferences that the user can modify through the preferences modal.
+![image](https://github.com/Patitotective/ImTemplate/assets/79225325/bd018f26-4d8f-4dd4-a7ea-cfece401a3b5)
 
-These preferences will be stored at `getCacheDir(config["name"])` along with the window size and position using [niprefs](https://patitotective.github.io/niprefs/). To acces them you only need to do `app.prefs["name"]`
-
-![Prefs Modal](https://user-images.githubusercontent.com/79225325/170889748-316c4b7a-47d0-4a65-82b3-d4e50b9252ea.png)
-
-Each child key has to have the `type` key, and depending on it the required keys may change so go check [config.toml](https://github.com/Patitotective/ImTemplate/blob/main/config.toml) to see which keys which types do require.  
+## Prefs
+The preferences are data can change during runtime and data that you want to store for the future like the position and size of the window, this includes the settings like the language and theme.
+The preferences are saved in a KDL file (using [kdl/prefs](https://patitotective.github.io/kdl-nim/kdl/prefs.html)).
+You just have to provide an object including all the data you want to store as fields:
 ```nim
-[settings.combo]
-type = "combo"
-default = 2 # Or "c"
-items = ["a", "b", "c"]
-flags = "None" # See https://nimgl.dev/docs/imgui.html#ImGuiComboFlags
+type
+  Prefs* {.defaults: {defExported}.} = object
+    maximized* = false # Was the window maximized when the app was closed?
+    winpos* = (x: -1i32, y: -1i32) # Window position
+    winsize* = (w: 600i32, h: 650i32) # Window size
+    settings* = initSettings()
 ```
-There are two special keys, `display` and `help`, `display` replaces the name to display and `help` shows a help marker with help information (`help` does not work for `Section`s).  
-To access `combo`'s value in your program you should do `app.prefs["combo"]`
 
-#### Setting types
-- `Input`: Input text.
-- `Check`: Checkbox.
-- `Slider`: Integer slider.
-- `FSlider`: Float slider.
-- `Spin`: Integer spin.
-- `FSpin`: Float spin.
-- `Combo`: Combo.
-- `Radio`: Radio button.
-- `Color3`: Color edit RGB.
-- `Color4`: Color edit RGBA.
-- `Section`: See [`Section`](#section)
+### Settings
+The settings are preferences that the user can modify through the settings modal.
 
-#### `Section`
-![Setting Section](https://user-images.githubusercontent.com/79225325/170889758-b7845c4a-df3a-4a06-a0c9-e64b0659097e.png)
+![image](https://github.com/Patitotective/ImTemplate/assets/79225325/0b268d5a-e034-4541-be96-954263bab2ae)
 
-Section types are useful to group similar settings.  
-It fits the settings at `content` inside a [collapsing header](https://nimgl.dev/docs/imgui.html#igCollapsingHeader%2Ccstring%2CImGuiTreeNodeFlags).
+You can define all the settings' settings (i.e.: combobox, checkbox, input, etc.) through the `Settings` object:
 ```nim
-[settings.colors]
-display = "Color pickers"
-type = "section"
-flags = "None" # See https://nimgl.dev/docs/imgui.html#ImGuiTreeNodeFlags
-[settings.colors.content.color]
-display = "RGB color"
-type = "color3" # RGB
-default = "#000000" # Or [0, 0, 0] or rgb(0, 0, 0) or black
-flags = "None" # See https://nimgl.dev/docs/imgui.html#ImGuiColorEditFlags
-[settings.colors.content.alphaColor]
-display = "RGBA color"
-type = "color4" # RGBA
-default  =  "rgba(17, 209, 194, 0.64)" # Or [0.06666667014360428, 0.8196078538894653, 0.7607843279838562, 0.6392157077789307]
-flags = "None" # See https://nimgl.dev/docs/imgui.html#ImGuiColorEditFlags
+type
+  Os* {.defaults: {}.} = object
+    file* = fileSetting(display = "Text File", filterPatterns = @["*.txt", "*.nim", "*.kdl", "*.json"])
+    files* = filesSetting(display = "Multiple files", singleFilterDescription = "Anything", default = @[".bashrc", ".profile"])
+    folder* = folderSetting(display = "Folder")
+
+  Numbers* {.defaults: {}.} = object
+    spin* = spinSetting(display = "Int Spinner", default = 4, range = 0i32..10i32)
+    fspin* = fspinSetting(display = "Float Spinner", default = 3.14, range = 0f..10f)
+    slider* = sliderSetting(display = "Int Slider", default = 40, range = -100i32..100i32)
+    fslider* = fsliderSetting(display = "Float Slider", default = -2.5, range = -10f..10f)
+
+  Colors* {.defaults: {}.} = object
+    rgb* = rgbSetting(default = [1f, 0f, 0.2f])
+    rgba* = rgbaSetting(default = [0.4f, 0.7f, 0f, 0.5f], flags = @[AlphaBar, AlphaPreviewHalf])
+
+  Sizes* = enum
+    None, Huge, Big, Medium, Small, Mini
+
+  Settings* {.defaults: {}.} = object
+    input* = inputSetting(display = "Input", default = "Hello World")
+    input2* = inputSetting(
+      display = "Custom Input", hint = "Type...",
+      help = "Has a hint, 10 characters maximum and only accepts on return",
+      limits = 0..10, flags = @[ImGuiInputTextFlags.EnterReturnsTrue]
+    )
+    check* = checkSetting(display = "Checkbox", default = true)
+    combo* = comboSetting(display = "Combo box", items = Sizes.toSeq, default = None)
+    radio* = radioSetting(display = "Radio button", items = @[Big, Medium, Small], default = Medium)
+    os* = sectionSetting(display = "File dialogs", help = "Single file, multiple files and folder pickers", content = initOs())
+    numbers* = sectionSetting(display = "Spinners and sliders", content = initNumbers())
+    colors* = sectionSetting(display = "Color pickers", content = initColors())
 ```
-To access `alphaColor` you will need to do `app.prefs["colors"]["alphaColor"]` or `app.prefs{"colors", "alphaColor"}`.
 
 ## Building
-To build your app you may want to run `nimble buildApp` task.
+To build your app you may want to run `nimble buildr` task.
+You can set the following environment variables to change the building process:
+- `ARCH`: the architecture used to compile the binary, by default `amd64`.
+- `OUTPATH`: the path of the binary file (or exe file on Windows), by default "name-version-arch"
+- `FLAGS`: any other flags you want to pass to the compiler, optional.
 
-_Note: Unfortunately on Window most of the times Nim binaries are flagged as virus, see https://github.com/nim-lang/Nim/issues/17820._
+**_Note: Unfortunately on Window most of the times Nim binaries are flagged as virus, see https://github.com/nim-lang/Nim/issues/17820._**
 
 ### Bundling
-To bundle your app resources inside the compiled binary, you only need to go to `resourcesdata.nim` file and define their paths in the `resources` array.  
-After that `resourcesdata` is imported in `main.nim`. So when you compile it, it statically reads those files and creates a table with `[path, data]`.  
-To access them use `path.getData()`.  
-[`resourcesdata.nim`](https://github.com/Patitotective/ImTemplate/blob/main/resourcesdata.nim)
+To bundle your app resources inside the compiled binary, you only need to go to [`resources.nim`](https://github.com/Patitotective/ImTemplate/blob/main/resources.nim) file and define their paths in the `resourcesPaths` array.
+After that `resources` is imported in `main.nim`. So when you compile it, it statically reads those files and creates a table with the binary data.
+To access them use `app.resources["path"]`.
+By default this is how `resourcesPaths` looks like:
 ```nim
 ...
-const resourcesPaths = [
-  configPath, 
-  config["iconPath"].getString(), 
-  config["stylePath"].getString(), 
-  config["fontPath"].getString(), 
-  config["iconFontPath"].getString()
-]
+const resourcesPaths = @[
+  config.stylePath,
+  config.iconPath,
+  config.iconFontPath,
+] & config.fonts.mapIt(it.path) # Add the paths of each font
 ...
 ```
 
@@ -206,13 +210,13 @@ const resourcesPaths = [
 You can publish your application as a [binary package](https://github.com/nim-lang/nimble#binary-packages) with nimble.
 
 ### AppImage (Linux)
-To build your app as an AppImage you will need to run `nake build`, it will install the dependencies, compile the app, check for `appimagetool` (and install it if its not found in the `$PATH`), generate the `AppDir` directory and finally build the AppImage.  
-If you included the `ghRepo` key in the config file, it will generate also an `AppImage.zsync` file. You should attach this file along with the `AppImage` to your GitHub release.  
-If you included the `appstreamPath` key, it will get copied to `AppDir/usr/share/shareinfo/{config["name"]}.appdata.xml` (see https://docs.appimage.org/packaging-guide/optional/appstream.html).
+To build your app as an AppImage you will need to run `nimble buildapp`, it will install the dependencies, compile the app, check for `appimagetool` (and install it if its not found in the `$PATH`), generate the `AppDir` directory and finally build the AppImage.
+If you included `ghRepo` in the config, it will also generate an `AppImage.zsync` file. You should attach this file along with the `AppImage` to your GitHub release.
+If you included `appstreamPath`, it will get copied to `AppDir/usr/share/shareinfo/{config.name}.appdata.xml` (see https://docs.appimage.org/packaging-guide/optional/appstream.html).
 
 ### Creating a release
-ImTemplate has a [`build.yml` workflow](https://github.com/Patitotective/ImTemplate/blob/main/.github/workflows/build.yml) that automatically when you publish a release, builds an AppImage and an `.exe` file to then upload them as assets to the release.  
-This can take several minutes.  
+ImTemplate has a [`build.yml` workflow](https://github.com/Patitotective/ImTemplate/blob/main/.github/workflows/build.yml) that automatically when you publish a release, builds an AppImage and an `.exe` file to then upload them as assets to the release.
+This can take several minutes.
 
 ## Generated from ImTemplate
 Apps using this template:

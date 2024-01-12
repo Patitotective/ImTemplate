@@ -1,4 +1,4 @@
-import std/[strutils, os]
+import std/[threadpool, strutils, strformat, os]
 
 import imstyle
 import openurl
@@ -11,19 +11,11 @@ import src/[settingsmodal, utils, types, icons]
 when defined(release):
   import resources
 
-# TODO make configuration or at least settings inside the code and nto in the configuration file
-# TODO be able to reset single preferences to their default value
-
-const configPath {.strdefine.} = "config.kdl"
-
-proc getConfigDir(app: App): string = 
+proc getConfigDir(app: App): string =
   getConfigDir() / app.config.name
 
-proc drawAboutModal(app: App) = 
-  var center: ImVec2
-  getCenterNonUDT(center.addr, igGetMainViewport())
-  igSetNextWindowPos(center, Always, igVec2(0.5f, 0.5f))
-
+proc drawAboutModal(app: App) =
+  igSetNextWindowPos(igGetMainViewport().getCenter(), Always, igVec2(0.5f, 0.5f))
   let unusedOpen = true # Passing this parameter creates a close button
   if igBeginPopupModal(cstring "About " & app.config.name & "###about", unusedOpen.unsafeAddr, flags = makeFlags(ImGuiWindowFlags.NoResize)):
     # Display icon image
@@ -35,12 +27,12 @@ proc drawAboutModal(app: App) =
     igImage(cast[ptr ImTextureID](texture), igVec2(64, 64)) # Or igVec2(image.width.float32, image.height.float32)
     if igIsItemHovered() and app.config.website.len > 0:
       igSetTooltip(cstring app.config.website & " " & FA_ExternalLink)
-      
+
       if igIsMouseClicked(ImGuiMouseButton.Left):
         app.config.website.openURL()
 
     igSameLine()
-    
+
     igPushTextWrapPos(250)
     igTextWrapped(cstring app.config.comment)
     igPopTextWrapPos()
@@ -58,7 +50,7 @@ proc drawAboutModal(app: App) =
           url.openURL()
         if igIsItemHovered() and url.len > 0:
           igSetTooltip(cstring url & " " & FA_ExternalLink)
-      
+
       igEndChild()
 
     igSpacing()
@@ -68,7 +60,7 @@ proc drawAboutModal(app: App) =
     igEndPopup()
 
 proc drawMainMenuBar(app: var App) =
-  var openAbout, openPrefs = false
+  var openAbout, openPrefs, openBlockdialog = false
 
   if igBeginMainMenuBar():
     if igBeginMenu("File"):
@@ -79,7 +71,10 @@ proc drawMainMenuBar(app: var App) =
 
     if igBeginMenu("Edit"):
       if igMenuItem("Hello"):
-        echo "Hello"
+        # If a messageBox hasn't been called or if a called messageBox has already been closed
+        if app.messageBoxResult.isNil or app.messageBoxResult.isReady():
+          app.messageBoxResult = spawn messageBox(app.config.name, "Hello, earthling. Wanna come with us?", DialogType.YesNo, IconType.Question, Button.Yes)
+          openBlockdialog = true
 
       igEndMenu()
 
@@ -89,24 +84,27 @@ proc drawMainMenuBar(app: var App) =
 
       igMenuItem(cstring "About " & app.config.name, shortcut = nil, p_selected = openAbout.addr)
 
-      igEndMenu() 
+      igEndMenu()
 
     igEndMainMenuBar()
 
   # See https://github.com/ocornut/imgui/issues/331#issuecomment-751372071
   if openPrefs:
-    app.settingsmodal.cache = app.prefs[settings]
+    initCache(app.prefs[settings])
     igOpenPopup("Settings")
   if openAbout:
     igOpenPopup("###about")
+  if openBlockdialog:
+    igOpenPopup("###blockdialog")
 
   # These modals will only get drawn when igOpenPopup(name) are called, respectly
   app.drawAboutModal()
   app.drawSettingsmodal()
+  # app.drawBlockDialogModal()
 
 proc drawMain(app: var App) = # Draw the main window
-  let viewport = igGetMainViewport()  
-  
+  let viewport = igGetMainViewport()
+
   app.drawMainMenuBar()
   # Work area is the entire viewport minus main menu bar, task bars, etc.
   igSetNextWindowPos(viewport.workPos)
@@ -116,12 +114,18 @@ proc drawMain(app: var App) = # Draw the main window
     igText(FA_Info & " Application average %.3f ms/frame (%.1f FPS)", 1000f / igGetIO().framerate, igGetIO().framerate)
 
     if igButton("Click me"):
-      notifyPopup(app.config.name, "Do not do that again", IconType.Warning)
+      spawn notifyPopup(app.config.name, "Do not do that again", IconType.Warning)
 
     app.fonts[1].igPushFont()
     igText("Unicode fonts (NotoSansJP-Regular.otf)")
-    igText("「僕だけがいない街」が好きだった " & FA_SmileO)
+    igText("日本語の言葉 " & FA_SmileO)
     igPopFont()
+
+    if not app.messageBoxResult.isNil and app.messageBoxResult.isReady:
+      if ^app.messageBoxResult == Button.Yes:
+        igText("Glad you said yes!")
+      else:
+        igText("Prepare yourself for the consequences...")
 
   igEnd()
 
@@ -148,12 +152,12 @@ proc render(app: var App) = # Called in the main loop
   glClearColor(bgColor.x, bgColor.y, bgColor.z, bgColor.w)
   glClear(GL_COLOR_BUFFER_BIT)
 
-  igOpenGL3RenderDrawData(igGetDrawData())  
+  igOpenGL3RenderDrawData(igGetDrawData())
 
   app.win.makeContextCurrent()
   app.win.swapBuffers()
 
-proc initWindow(app: var App) = 
+proc initWindow(app: var App) =
   glfwWindowHint(GLFWContextVersionMajor, 3)
   glfwWindowHint(GLFWContextVersionMinor, 3)
   glfwWindowHint(GLFWOpenglForwardCompat, GLFW_TRUE)
@@ -163,9 +167,10 @@ proc initWindow(app: var App) =
     glfwWindowHint(GLFWMaximized, GLFW_TRUE)
 
   app.win = glfwCreateWindow(
-    app.prefs[winsize].x, 
-    app.prefs[winsize].y, 
-    cstring app.config.name, 
+    app.prefs[winsize].w,
+    app.prefs[winsize].h,
+    cstring app.config.name,
+    # glfwGetPrimaryMonitor(), # Show the window on the primary monitor
     icon = false # Do not use default icon
   )
 
@@ -176,92 +181,83 @@ proc initWindow(app: var App) =
   var icon = initGLFWImage(app.res(app.config.iconPath).readImageFromMemory())
   app.win.setWindowIcon(1, icon.addr)
 
-  if app.config.minSize.isSome:
-    app.win.setWindowSizeLimits(app.config.minSize.get.x, app.config.minSize.get.y, GLFW_DONT_CARE, GLFW_DONT_CARE) # minWidth, minHeight, maxWidth, maxHeight
+  # min width, min height, max widht, max height
+  app.win.setWindowSizeLimits(app.config.minSize.w, app.config.minSize.h, GLFW_DONT_CARE, GLFW_DONT_CARE)
 
   # If negative pos, center the window in the first monitor
   if app.prefs[winpos].x < 0 or app.prefs[winpos].y < 0:
     var monitorX, monitorY, count, width, height: int32
-    let monitors = glfwGetMonitors(count.addr)
-    let videoMode = monitors[0].getVideoMode()
+    let monitor = glfwGetMonitors(count.addr)[0]#glfwGetPrimaryMonitor()
+    let videoMode = monitor.getVideoMode()
 
-    monitors[0].getMonitorPos(monitorX.addr, monitorY.addr)
+    monitor.getMonitorPos(monitorX.addr, monitorY.addr)
     app.win.getWindowSize(width.addr, height.addr)
     app.win.setWindowPos(
-      monitorX + int32((videoMode.width - width) / 2), 
+      monitorX + int32((videoMode.width - width) / 2),
       monitorY + int32((videoMode.height - height) / 2)
     )
   else:
     app.win.setWindowPos(app.prefs[winpos].x, app.prefs[winpos].y)
 
-proc initPrefs(app: var App) = 
-  app.prefs = initKPrefs(
-    path = (app.getConfigDir() / "prefs").changeFileExt("kdl"), 
-    default = Prefs(
-      maximized: false, 
-      winpos: (-1i32, -1i32), # Negative numbers center the window
-      winsize: (600i32, 650i32), 
-      settings: Settings(
-        input: "Hello World", 
-        hintInput: "", 
-        checkbox: true, 
-        combo: Abc.C, 
-        radio: Abc.A, 
-        numbers: Numbers(
-          slider: 4, 
-          floatSlider: 2.5, 
-          spin: 4, 
-          floatSpin: 3.14, 
-        ), 
-        colors: Colors(
-          rgb: (1.0f, 0.0f, 0.2f), 
-          rgba: (0.4f, 0.7f, 0.0f, 0.5f), 
-        ), 
-      )
-    )
-  )
-
-proc checkSettings(app: App) = 
-  for name, field in app.settingsmodal.cache.fieldPairs:
-    var found = false
-    for key, _ in app.config.settings:
-      if key.eqIdent name:
-        found = true
-        break
-
-    if not found:
-      raise newException(KeyError, name & " is not in defined in the config file")
-
-proc initApp(): App = 
+proc initApp(): App =
   when defined(release):
     result.resources = readResources()
 
-  result.config = result.res(configPath).parseKdl().decode(Config)
-  result.checkSettings()
+  result.config = Config()
 
-  result.initPrefs()
+  let filename =
+    when defined(release): "prefs"
+    else: "prefs_dev"
 
-template initFonts(app: var App) = 
+  let path = (result.getConfigDir() / filename).changeFileExt("kdl")
+
+  try:
+    result.prefs = initKPrefs(
+      path = path,
+      default = initPrefs()
+    )
+  except KdlError:
+    let m = messageBox(result.config.name, &"Corrupt preferences file {path}.\nYou cannot continue using the app until it is fixed.\nYou may fix it manually or do you want to delete it and reset its content? You cannot undo this action", DialogType.OkCancel, IconType.Error, Button.No)
+    if m == Button.Yes:
+      discard tryRemoveFile(path)
+      result.prefs = initKPrefs(
+        path = path,
+        default = initPrefs()
+      )
+    else:
+      raise
+
+template initFonts(app: var App) =
   # Merge ForkAwesome icon font
   let config = utils.newImFontConfig(mergeMode = true)
-  let ranges = [uint16 FA_Min, uint16 FA_Max]
+  let iconFontGlyphRanges = [uint16 FA_Min, uint16 FA_Max]
 
-  for e, (path, size) in app.config.fonts.fonts:
-    let glyph_ranges = 
-      case e
-      of 1: io.fonts.getGlyphRangesJapanese()
-      else: nil
+  for e, font in app.config.fonts:
+    let glyph_ranges =
+      case font.glyphRanges
+      of GlyphRanges.Default: io.fonts.getGlyphRangesDefault()
+      of ChineseFull: io.fonts.getGlyphRangesChineseFull()
+      of ChineseSimplified: io.fonts.getGlyphRangesChineseSimplifiedCommon()
+      of Cyrillic: io.fonts.getGlyphRangesCyrillic()
+      of Japanese: io.fonts.getGlyphRangesJapanese()
+      of Korean: io.fonts.getGlyphRangesKorean()
+      of Thai: io.fonts.getGlyphRangesThai()
+      of Vietnamese: io.fonts.getGlyphRangesVietnamese()
 
-    app.fonts[e] = io.fonts.igAddFontFromMemoryTTF(app.res(path), size, glyph_ranges = glyph_ranges)
-    if app.config.fonts.iconFontPath.len > 0:
-      io.fonts.igAddFontFromMemoryTTF(app.res(app.config.fonts.iconFontPath), size, config.unsafeAddr, ranges[0].unsafeAddr)
+    app.fonts[e] = io.fonts.igAddFontFromMemoryTTF(app.res(font.path), font.size, glyph_ranges = glyph_ranges)
 
-proc terminate(app: var App) = 
+    # Here we add the icon font to every font
+    if app.config.iconFontPath.len > 0:
+      io.fonts.igAddFontFromMemoryTTF(app.res(app.config.iconFontPath), font.size, config.unsafeAddr, iconFontGlyphRanges[0].unsafeAddr)
+
+proc terminate(app: var App) =
+  sync() # Wait for spawned threads
+
   var x, y, width, height: int32
 
   app.win.getWindowPos(x.addr, y.addr)
   app.win.getWindowSize(width.addr, height.addr)
-  
+
   app.prefs[winpos] = (x, y)
   app.prefs[winsize] = (width, height)
   app.prefs[maximized] = app.win.getWindowAttrib(GLFWMaximized) == GLFW_TRUE
@@ -274,7 +270,7 @@ proc main() =
   # Setup Window
   doAssert glfwInit()
   app.initWindow()
-  
+
   app.win.makeContextCurrent()
   glfwSwapInterval(1) # Enable vsync
 
@@ -295,18 +291,20 @@ proc main() =
   app.initFonts()
 
   # Main loop
+  # discard app.win.setWindowCloseCallback(closeCallback(, app.config.name))
   while not app.win.windowShouldClose:
     app.render()
 
   # Cleanup
   igOpenGL3Shutdown()
   igGlfwShutdown()
-  
+
   igDestroyContext()
-  
+
   app.terminate()
   app.win.destroyWindow()
   glfwTerminate()
 
 when isMainModule:
   main()
+

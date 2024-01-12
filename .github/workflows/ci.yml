@@ -16,13 +16,14 @@ jobs:
 
       - name: Build
         run: |
+          nimble install -d -y
           nimble buildapp
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: appimage-amd64
-          path: ./*-*-*.AppImage
+          path: ./*.AppImage
           if-no-files-found: error
 
   windows:
@@ -32,10 +33,12 @@ jobs:
       - uses: iffy/install-nim@v4.1.1
 
       - name: Build
-        run: nimble buildr
+        run: |
+          nimble install -d -y
+          nimble buildr
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: win-amd64
-          path: ./*-*-*.exe
+          path: ./*.exe
           if-no-files-found: error
