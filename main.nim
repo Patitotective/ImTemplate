@@ -227,6 +227,8 @@ proc initApp(): App =
     else:
       raise
 
+  result.updatePrefs()
+
 template initFonts(app: var App) =
   # Merge ForkAwesome icon font
   let config = utils.newImFontConfig(mergeMode = true)
@@ -291,7 +293,6 @@ proc main() =
   app.initFonts()
 
   # Main loop
-  # discard app.win.setWindowCloseCallback(closeCallback(, app.config.name))
   while not app.win.windowShouldClose:
     app.render()
 

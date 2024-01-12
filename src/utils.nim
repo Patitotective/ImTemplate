@@ -39,7 +39,8 @@ proc cleanString*(str: string): string =
   str.strip()
 
 proc updatePrefs*(app: var App) =
-  # Update the values depending on the preferences here
+  # Update values depending on the preferences here
+  # This procedure is also called at the start of the app
   echo "Updating preferences..."
 
 proc res*(app: App, path: string): string =
