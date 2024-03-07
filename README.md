@@ -1,7 +1,7 @@
 # <img title="Icon" width=50 height=50 src="https://github.com/Patitotective/ImTemplate/blob/main/assets/icon.png"></img> ImTemplate
 Template for making a single-windowed Dear ImGui application in Nim.
 
-![Main Window](https://user-images.githubusercontent.com/79225325/170889620-d1b3ce74-c92d-440c-9144-92b068973651.png)
+![image](https://github.com/Patitotective/ImTemplate/assets/79225325/6acb8632-1505-4cf9-a520-80255a13c499)
 
 (Check [ImDemo](https://github.com/Patitotective/ImDemo) for a **full** example)
 
@@ -75,7 +75,7 @@ type
 The configuration stores data like name and version of the application, it is stored in its type definition in `src/configtype.nim` using `constructor/defaults` to define the default values:
 ```nim
 type
-  Config* {.defaults: {defExported}.} = object
+  Config* = object
     name* = "ImExample"
     comment* = "ImExample is a simple Dear ImGui application example"
     version* = "2.0.0"
@@ -126,7 +126,7 @@ type
 ### About Modal
 Using the information from the config object, ImTemplate creates a simple about modal.
 
-![About Modal](https://user-images.githubusercontent.com/79225325/170889730-8cba620b-3d6d-4574-8228-5c45930821d1.png)
+![image](https://github.com/Patitotective/ImTemplate/assets/79225325/bd018f26-4d8f-4dd4-a7ea-cfece401a3b5)
 
 ## Prefs
 The preferences are data can change during runtime and data that you want to store for the future like the position and size of the window, this includes the settings like the language and theme.
@@ -144,7 +144,7 @@ type
 ### Settings
 The settings are preferences that the user can modify through the settings modal.
 
-![Settings Modal](https://user-images.githubusercontent.com/79225325/170889748-316c4b7a-47d0-4a65-82b3-d4e50b9252ea.png)
+![image](https://github.com/Patitotective/ImTemplate/assets/79225325/0b268d5a-e034-4541-be96-954263bab2ae)
 
 You can define all the settings' settings (i.e.: combobox, checkbox, input, etc.) through the `Settings` object:
 ```nim
@@ -166,6 +166,20 @@ type
 
   Sizes* = enum
     None, Huge, Big, Medium, Small, Mini
+
+  Settings* {.defaults: {}.} = object
+    input* = inputSetting(display = "Input", default = "Hello World")
+    input2* = inputSetting(
+      display = "Custom Input", hint = "Type...",
+      help = "Has a hint, 10 characters maximum and only accepts on return",
+      limits = 0..10, flags = @[ImGuiInputTextFlags.EnterReturnsTrue]
+    )
+    check* = checkSetting(display = "Checkbox", default = true)
+    combo* = comboSetting(display = "Combo box", items = Sizes.toSeq, default = None)
+    radio* = radioSetting(display = "Radio button", items = @[Big, Medium, Small], default = Medium)
+    os* = sectionSetting(display = "File dialogs", help = "Single file, multiple files and folder pickers", content = initOs())
+    numbers* = sectionSetting(display = "Spinners and sliders", content = initNumbers())
+    colors* = sectionSetting(display = "Color pickers", content = initColors())
 ```
 
 ## Building
