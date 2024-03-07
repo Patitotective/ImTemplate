@@ -129,7 +129,7 @@ Using the information from the config object, ImTemplate creates a simple about 
 ![image](https://github.com/Patitotective/ImTemplate/assets/79225325/bd018f26-4d8f-4dd4-a7ea-cfece401a3b5)
 
 ## Prefs
-The preferences are data can change during runtime and data that you want to store for the future like the position and size of the window, this includes the settings like the language and theme.
+The preferences is the data that can change during runtime and that data that you want to store for the future like the position and size of the window, this includes the settings the user can change like the language and theme.
 The preferences are saved in a KDL file (using [kdl/prefs](https://patitotective.github.io/kdl-nim/kdl/prefs.html)).
 You just have to provide an object including all the data you want to store as fields:
 ```nim
@@ -215,7 +215,7 @@ If you included `ghRepo` in the config, it will also generate an `AppImage.zsync
 If you included `appstreamPath`, it will get copied to `AppDir/usr/share/shareinfo/{config.name}.appdata.xml` (see https://docs.appimage.org/packaging-guide/optional/appstream.html).
 
 ### Creating a release
-ImTemplate has a [`build.yml` workflow](https://github.com/Patitotective/ImTemplate/blob/main/.github/workflows/build.yml) that automatically when you publish a release, builds an AppImage and an `.exe` file to then upload them as assets to the release.
+ImTemplate has a [`release.yml` workflow](https://github.com/Patitotective/ImTemplate/blob/main/.github/workflows/release.yml) that automatically when you publish a release, builds an AppImage and an `.exe` file to then upload them as assets to the release.
 This can take several minutes.
 
 ## Generated from ImTemplate
