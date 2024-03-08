@@ -100,7 +100,7 @@ proc drawMainMenuBar(app: var App) =
   # These modals will only get drawn when igOpenPopup(name) are called, respectly
   app.drawAboutModal()
   app.drawSettingsmodal()
-  # app.drawBlockDialogModal()
+  app.drawBlockDialogModal()
 
 proc drawMain(app: var App) = # Draw the main window
   let viewport = igGetMainViewport()

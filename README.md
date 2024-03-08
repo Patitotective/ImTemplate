@@ -14,9 +14,9 @@ Template for making a single-windowed Dear ImGui application in Nim.
 - Updateable AppImage support (with [gh-releases-zsync](https://github.com/AppImage/AppImageSpec/blob/master/draft.md#github-releases)).
 - Simple data resources support (embed files into the binary).
 - GitHub workflow for building and uploading the AppImage and `.exe` as assets.
-- Non-blocking (using a [`std/threadpool`](https://nim-lang.org/docs/threadpool.html)) native system dialogs using [`tinydialogs`](https://github.com/Patitotective/tinydialogs).
+- Non-blocking (using [`std/threadpool`](https://nim-lang.org/docs/threadpool.html)) native system dialogs using [`tinydialogs`](https://github.com/Patitotective/tinydialogs).
 
-(To use NimGL in Ubuntu you might need some libraries `sudo apt install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl-dev`)
+(To use NimGL in Ubuntu you might need to install some libraries `sudo apt install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libgl-dev`)
 
 ## Files Structure
 - `README.md`: Project's description.
