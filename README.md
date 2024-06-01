@@ -126,7 +126,7 @@ type
 ### About Modal
 Using the information from the config object, ImTemplate creates a simple about modal.
 
-![image](https://github.com/Patitotective/ImTemplate/assets/79225325/bd018f26-4d8f-4dd4-a7ea-cfece401a3b5)
+![image](https://github.com/Patitotective/ImTemplate/assets/79225325/9574cd96-0f77-4032-bd0a-34ca49217d21)
 
 ## Prefs
 The preferences is the data that can change during runtime and that data that you want to store for the future like the position and size of the window, this includes the settings the user can change like the language and theme.
