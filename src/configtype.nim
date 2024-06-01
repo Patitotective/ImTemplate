@@ -17,7 +17,7 @@ type
   Config* = object
     name* = "ImExample"
     comment* = "ImExample is a simple Dear ImGui application example"
-    version* = "2.0.0"
+    version* = "2.1.0"
     website* = "https://github.com/Patitotective/ImTemplate"
     authors* = [
       (name: "Patitotective", url: "https://github.com/Patitotective"),

@@ -57,6 +57,17 @@ proc drawAboutModal(app: App) =
 
     igText(cstring app.config.version)
 
+    if app.prefs.path.len > 0:
+      igSameLine()
+
+      igSetCursorPosX(igGetCurrentWindow().size.x - igCalcFrameSize("Open prefs file").x - igGetStyle().windowPadding.x)
+
+      if igButton("Open prefs file"):
+        openURL(app.prefs.path)
+
+      if igIsItemHovered():
+        igSetTooltip(cstring app.prefs.path & " " & FA_FileTextO)
+
     igEndPopup()
 
 proc drawMainMenuBar(app: var App) =
