@@ -46,7 +46,7 @@ type
     numbers* = sectionSetting(display = "Spinners and sliders", content = initNumbers())
     colors* = sectionSetting(display = "Color pickers", content = initColors())
 
-# KDL Settings encode/decode
+# For encoding/decoding the settings to/from the preferences file
 
 proc decodeSettingsObj(a: KdlNode, v: var object) =
   for fieldName, field in v.fieldPairs:
