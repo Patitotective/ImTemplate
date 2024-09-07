@@ -7,14 +7,15 @@ backend          = "cpp"
 
 # Dependencies
 
-requires "nim >= 1.6.2"
-requires "kdl >= 2.0.1"
-requires "nimgl >= 1.3.2"
-requires "stb_image >= 2.5"
-requires "imstyle >= 3.0.0"
-requires "openurl >= 2.0.4"
-requires "tinydialogs >= 1.0.0"
-requires "constructor >= 1.2.0"
+requires "nim ^= 1.6.2"
+requires "kdl ^= 2.0.1"
+requires "nimgl ^= 1.3.2"
+requires "stb_image ^= 2.5"
+requires "imstyle ^= 3.0.0"
+requires "openurl ^= 2.0.4"
+requires "tinydialogs ^= 1.0.0"
+requires "constructor ^= 1.2.0"
+requires "weave ^= 0.4.10"
 
 import std/[strformat, options]
 import src/configtype

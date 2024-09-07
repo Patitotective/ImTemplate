@@ -1,9 +1,10 @@
-import std/[threadpool, tables]
+import std/[tables]
 
 import nimgl/[imgui, glfw]
 import tinydialogs
 import kdl, kdl/[types, utils]
 import constructor/defaults
+import weave
 
 import configtype, settingstypes
 
@@ -96,10 +97,10 @@ proc decodeKdl*(a: KdlNode, v: var Settings) =
   decodeSettingsObj(a, v)
 
 proc encodeKdl*[T](a: FlowVar[T], v: var KdlVal) =
-  if a.isNil or not a.isReady:
+  if not a.isSpawned or not a.isReady:
     v = initKNull()
   else:
-    v = encodeKdlVal(^a)
+    v = encodeKdlVal(sync a)
 
 proc encodeKdl*(a: Empty, v: var KdlVal) =
   v = initKNull()
@@ -180,3 +181,4 @@ type
 
   ImageData* = tuple[image: seq[byte], width, height: int]
 
+  OpenFileDialogArgs* = tuple[title, defaultPath: string, filterPatterns: seq[string], singleFilterDescription: string]

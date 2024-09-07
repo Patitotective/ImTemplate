@@ -1,6 +1,6 @@
-import std/[threadpool]
 import std/macros except eqIdent # since it conflicts with kdl/util.eqIdent
 import nimgl/imgui
+import weave
 
 type
   SettingType* = enum

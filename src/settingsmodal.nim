@@ -1,17 +1,17 @@
-import std/[threadpool, typetraits, strutils, options, tables, macros, os]
+import std/[typetraits, strutils, options, tables, macros, os]
 import micros
 import kdl/prefs
 import tinydialogs
 import nimgl/imgui
+import weave
 
-import utils, icons, types
+import utils, icons, types, settingstypes
 
 proc settingLabel(name: string, setting: Setting[auto]): string =
   (if setting.display.len == 0: name else: setting.display) & ": "
 
 proc drawSettings(settings: var object, maxLabelWidth: float32): bool =
-  ## Returns wheter or not to open the block dialog (because a file dailog or so was open)
-
+  ## Returns wheter or not to open the block dialog (because a file dialog or so was open)
   for name, setting in settings.fieldPairs:
     let label = settingLabel(name, setting)
     let id = cstring "##" & name
@@ -96,19 +96,22 @@ proc drawSettings(settings: var object, maxLabelWidth: float32): bool =
     of stRGBA:
       igColorEdit4(id, setting.rgbaCache, makeFlags(setting.rgbaFlags))
     of stFile:
-      if not setting.fileCache.flowvar.isNil and setting.fileCache.flowvar.isReady and (let val = ^setting.fileCache.flowvar; val.len > 0):
-        setting.fileCache = (val: val, flowvar: nil) # Here we set flowvar to nil because once we acquire it's value it's not neccessary until it's spawned again
+      if setting.fileCache.flowvar.isSpawned and setting.fileCache.flowvar.isReady and (let val = sync setting.fileCache.flowvar; val.len > 0):
+        setting.fileCache.val = val
 
       igPushID(id)
       igInputTextWithHint("##input", "No file selected", cstring setting.fileCache.val, uint setting.fileCache.val.len, flags = ImGuiInputTextFlags.ReadOnly)
       igSameLine()
       if igButton("Browse " & FA_FolderOpen):
-        setting.fileCache.flowvar = spawn openFileDialog("Choose File", getCurrentDir() / "\0", setting.fileFilterPatterns, setting.fileSingleFilterDescription)
+        let args = OpenFileDialogArgs (title: "Choose File", defaultPath: getCurrentDir() / "\0", 
+          filterPatterns: setting.fileFilterPatterns, singleFilterDescription: setting.fileSingleFilterDescription)
+        proc x(args: OpenFileDialogArgs): string = openFileDialog(args)
+        setting.fileCache.flowvar = spawn x(args)
         result = true
       igPopID()
     of stFiles:
-      if not setting.filesCache.flowvar.isNil and setting.filesCache.flowvar.isReady and (let val = ^setting.filesCache.flowvar; val.len > 0):
-        setting.filesCache = (val: val, flowvar: nil) # Here we set flowvar to nil because once we acquire it's value it's not neccessary until it's spawned again
+      if setting.filesCache.flowvar.isSpawned and setting.filesCache.flowvar.isReady and (let val = sync setting.filesCache.flowvar; val.len > 0):
+        setting.filesCache.val = val
 
       let files = setting.filesCache.val.join(";")
       igPushID(id)
@@ -119,8 +122,8 @@ proc drawSettings(settings: var object, maxLabelWidth: float32): bool =
         result = true
       igPopID()
     of stFolder:
-      if not setting.folderCache.flowvar.isNil and setting.folderCache.flowvar.isReady and (let val = ^setting.folderCache.flowvar; val.len > 0):
-        setting.folderCache = (val: val, flowvar: nil) # Here we set flowvar to nil because once we acquire it's value it's not neccessary until it's spawned again
+      if setting.folderCache.flowvar.isSpawned and setting.folderCache.flowvar.isReady and (let val = sync setting.folderCache.flowvar; val.len > 0):
+        setting.folderCache = val
 
       igPushID(id)
       igInputTextWithHint("##input", "No folder selected", cstring setting.folderCache.val, uint setting.folderCache.val.len, flags = ImGuiInputTextFlags.ReadOnly)

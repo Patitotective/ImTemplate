@@ -1,10 +1,11 @@
-import std/[typetraits, threadpool, strutils, tables, macros, os]
+import std/[typetraits, strutils, tables, macros, os]
 import kdl, kdl/prefs
 import stb_image/read as stbi
 import nimgl/[imgui, glfw, opengl]
 import tinydialogs
+import weave
 
-import types
+import types, settingstypes
 
 proc makeFlags*[T: enum](flags: varargs[T]): T =
   ## Mix multiple flags of a specific enum
@@ -210,7 +211,7 @@ macro checkFlowVarsReady*(app: App, fields: varargs[untyped]): bool =
   # (app.field1.isNil or app.field1.isReady) and (app.field2.isNil or app.field2.isReady)
   for field in fields:
     let cond = quote do:
-      (`app`.`field`.isNil or `app`.`field`.isReady)
+      (not `app`.`field`.isSpawned or `app`.`field`.isReady)
 
     if result.kind == nnkEmpty:
       result = cond
@@ -224,13 +225,13 @@ proc checkSettingsFlowVarsReadyImpl(obj: object): bool =
   for fieldName, field in obj.fieldPairs:
     case field.kind
     of stFile:
-      if not field.fileCache.flowvar.isNil and not field.fileCache.flowvar.isReady:
+      if field.fileCache.flowvar.isSpawned and not field.fileCache.flowvar.isReady:
         return false
     of stFiles:
-      if not field.filesCache.flowvar.isNil and not field.filesCache.flowvar.isReady:
+      if field.filesCache.flowvar.isSpawned and not field.filesCache.flowvar.isReady:
         return false
     of stFolder:
-      if not field.folderCache.flowvar.isNil and not field.folderCache.flowvar.isReady:
+      if field.folderCache.flowvar.isSpawned and not field.folderCache.flowvar.isReady:
         return false
     of stSection:
       when field.content is object:

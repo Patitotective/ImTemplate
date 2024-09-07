@@ -125,7 +125,7 @@ proc drawMain(app: var App) = # Draw the main window
     igText(FA_Info & " Application average %.3f ms/frame (%.1f FPS)", 1000f / igGetIO().framerate, igGetIO().framerate)
 
     if igButton("Click me"):
-      spawn notifyPopup(app.config.name, "Do not do that again", IconType.Warning)
+     spawn notifyPopup(app.config.name, "Do not do that again", IconType.Warning)
 
     app.fonts[1].igPushFont()
     igText("Unicode fonts (NotoSansJP-Regular.otf)")
@@ -215,6 +215,7 @@ proc initApp(): App =
     result.resources = readResources()
 
   result.config = Config()
+  init(Weave)
 
   let filename =
     when defined(release): "prefs"
@@ -264,7 +265,7 @@ template initFonts(app: var App) =
       io.fonts.igAddFontFromMemoryTTF(app.res(app.config.iconFontPath), font.size, config.unsafeAddr, iconFontGlyphRanges[0].unsafeAddr)
 
 proc terminate(app: var App) =
-  sync() # Wait for spawned threads
+  exit(Weave)
 
   var x, y, width, height: int32
 
